@@ -1,5 +1,4 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase, ref, set, get, update, remove, child, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -14,11 +13,10 @@ const firebaseConfig = {
 };
 
 // 🔑 CHAVE DA GROQ
-const GROQ_API_KEY = "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"; 
+const GROQ_API_KEY = "gsk_JaWieMs7SYzZN98nxH8VWGdyb3FYo1UY18KBykv7urEk7UosCZCVgsk_JaWieMs7SYzZN98nxH8VWGdyb3FYo1UY18KBykv7urEk7UosCZCV"; 
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+const db = getDatabase(app); // O getAuth foi removido, agora usamos apenas o banco de dados
 
 let currentUser = null;
 let isAdmin = false;
@@ -79,24 +77,121 @@ window.openScreen = (screenId) => {
     if (screenId === 'notes-screen') loadMyNotes();
 };
 
-document.getElementById('btn-login').addEventListener('click', async () => {
-    const emailInput = document.getElementById('email').value;
-    const passInput = document.getElementById('password').value;
 
+// ==========================================
+// SISTEMA DE AUTENTICAÇÃO CUSTOMIZADO (REALTIME DATABASE)
+// ==========================================
+
+// O Firebase não aceita pontos ou caracteres especiais no nome da chave (nó). 
+// Essa função transforma "patrick.silva@gmail.com" em "patrick_silva_gmail_com"
+function sanitizeKey(email) {
+    return email.replace(/[.#$[\]/]/g, '_');
+}
+
+// LOGIN
+document.getElementById('btn-login').addEventListener('click', async () => {
+    const emailInput = document.getElementById('email').value.trim();
+    const passInput = document.getElementById('password').value;
+    const errorMsg = document.getElementById('auth-error');
+
+    if (!emailInput || !passInput) {
+        errorMsg.style.color = "#fc8181";
+        errorMsg.innerText = "Preencha o usuário e a senha.";
+        return;
+    }
+
+    // Regra Exclusiva do Administrador
     if (emailInput === 'au.costa' && passInput === '80605276') {
-        currentUser = { uid: 'admin_au_costa', name: 'AU Costa' };
+        currentUser = { uid: 'admin_au_costa', email: 'au.costa' };
         isAdmin = true;
+        errorMsg.innerText = "";
         loadDashboard();
         return;
     }
 
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, emailInput, passInput);
-        currentUser = userCredential.user;
-        isAdmin = false;
-        loadDashboard();
+        errorMsg.style.color = "#a0aec0";
+        errorMsg.innerText = "Verificando dados...";
+        
+        const userKey = sanitizeKey(emailInput);
+        const snapshot = await get(child(ref(db), `Biblia_Estudo/Users/${userKey}`));
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            // Verifica se a senha gravada no banco bate com a digitada
+            if (userData.password === passInput) {
+                currentUser = { uid: userKey, email: emailInput };
+                isAdmin = false;
+                errorMsg.innerText = "";
+                loadDashboard();
+            } else {
+                errorMsg.style.color = "#fc8181";
+                errorMsg.innerText = "Senha incorreta.";
+            }
+        } else {
+            errorMsg.style.color = "#fc8181";
+            errorMsg.innerText = "Usuário não encontrado. Crie uma conta.";
+        }
     } catch (error) {
-        document.getElementById('auth-error').innerText = "Erro ao logar. Verifique os dados.";
+        errorMsg.style.color = "#fc8181";
+        errorMsg.innerText = "Erro ao conectar ao banco de dados.";
+        console.error(error);
+    }
+});
+
+// CRIAR CONTA (REGISTRO)
+document.getElementById('btn-register').addEventListener('click', async () => {
+    const emailInput = document.getElementById('email').value.trim();
+    const passInput = document.getElementById('password').value;
+    const errorMsg = document.getElementById('auth-error');
+
+    if (!emailInput || !passInput) {
+        errorMsg.style.color = "#fc8181";
+        errorMsg.innerText = "Preencha um nome de usuário/e-mail e senha para criar a conta.";
+        return;
+    }
+
+    if (passInput.length < 6) {
+        errorMsg.style.color = "#fc8181";
+        errorMsg.innerText = "A senha deve ter no mínimo 6 caracteres.";
+        return;
+    }
+
+    // Bloqueia a criação de usuários tentando se passar por admin
+    if (emailInput.toLowerCase() === 'au.costa' || emailInput.toLowerCase() === 'admin_au_costa') {
+        errorMsg.style.color = "#fc8181";
+        errorMsg.innerText = "Nome de usuário reservado pelo sistema.";
+        return;
+    }
+
+    try {
+        errorMsg.style.color = "#a0aec0";
+        errorMsg.innerText = "Criando conta no banco de dados, aguarde...";
+        
+        const userKey = sanitizeKey(emailInput);
+        const snapshot = await get(child(ref(db), `Biblia_Estudo/Users/${userKey}`));
+        
+        if (snapshot.exists()) {
+            errorMsg.style.color = "#fc8181";
+            errorMsg.innerText = "Este usuário já existe. Tente fazer o login.";
+        } else {
+            // Salva o novo usuário no Realtime Database com os campos zerados
+            await set(ref(db, `Biblia_Estudo/Users/${userKey}`), {
+                email: emailInput,
+                password: passInput,
+                tempoEstudo: 0,
+                quizScore: 0
+            });
+            
+            currentUser = { uid: userKey, email: emailInput };
+            isAdmin = false;
+            errorMsg.innerText = "";
+            loadDashboard(); // Redireciona e loga automaticamente
+        }
+    } catch (error) {
+        errorMsg.style.color = "#fc8181";
+        errorMsg.innerText = "Erro ao criar conta. Verifique sua conexão.";
+        console.error(error);
     }
 });
 
@@ -106,6 +201,7 @@ document.getElementById('btn-logout').addEventListener('click', () => {
     openScreen('login-screen');
     document.getElementById('email').value = '';
     document.getElementById('password').value = '';
+    document.getElementById('auth-error').innerText = '';
 });
 
 async function loadDashboard() {
@@ -121,8 +217,6 @@ async function loadDashboard() {
             const data = snapshot.val();
             document.getElementById('total-time').innerText = Math.floor((data.tempoEstudo || 0) / 60) + " min";
             document.getElementById('quiz-score').innerText = (data.quizScore || 0) + " pts";
-        } else {
-            set(ref(db, `Biblia_Estudo/Users/${currentUser.uid}`), { tempoEstudo: 0, quizScore: 0 });
         }
     } catch (error) { console.error(error); }
 }
@@ -215,7 +309,7 @@ document.getElementById('btn-save-notes').addEventListener('click', async () => 
 
     try {
         const notesRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}/Notes`);
-        const newNoteRef = push(notesRef); // Gera um ID único
+        const newNoteRef = push(notesRef); 
         await set(newNoteRef, {
             livro: book,
             capitulo: chapter,
@@ -225,7 +319,7 @@ document.getElementById('btn-save-notes').addEventListener('click', async () => 
 
         statusText.innerText = "✅ Estudo salvo com sucesso!";
         statusText.style.color = "#48bb78";
-        document.getElementById('study-notes').value = ""; // limpa o campo
+        document.getElementById('study-notes').value = ""; 
         setTimeout(() => statusText.innerText = "", 3000);
     } catch (error) {
         console.error(error);
@@ -245,7 +339,7 @@ async function loadMyNotes() {
         if (snapshot.exists()) {
             const notes = snapshot.val();
             let html = '';
-            // Inverte para mostrar as mais recentes primeiro
+            
             const notesArray = Object.values(notes).reverse(); 
 
             notesArray.forEach(note => {
@@ -369,8 +463,6 @@ document.getElementById('btn-generate-plan').addEventListener('click', async () 
 // ==========================================
 // MÓDULO: QUIZ (JOGO E ADMINISTRAÇÃO)
 // ==========================================
-
-// Iniciar Setup do Quiz
 document.getElementById('btn-start-quiz').addEventListener('click', async () => {
     maxTimePerQuestion = parseInt(document.getElementById('quiz-time-range').value);
     
@@ -382,7 +474,6 @@ document.getElementById('btn-start-quiz').addEventListener('click', async () => 
         const snapshot = await get(child(ref(db), `Biblia_Estudo/QuizBank`));
         if (snapshot.exists()) {
             const allQuestions = Object.values(snapshot.val());
-            // Embaralhar as perguntas aleatoriamente
             quizQuestions = allQuestions.sort(() => 0.5 - Math.random());
             
             currentQuizIndex = 0;
@@ -419,7 +510,6 @@ function loadQuizQuestion() {
     const container = document.getElementById('options-container');
     container.innerHTML = '';
     
-    // Cria os botões para as opções
     for (const [letra, texto] of Object.entries(q.opcoes)) {
         const btn = document.createElement('button');
         btn.className = 'quiz-opt-btn';
@@ -430,7 +520,6 @@ function loadQuizQuestion() {
         container.appendChild(btn);
     }
 
-    // Inicia Temporizador
     quizTimeLeft = maxTimePerQuestion;
     document.getElementById('quiz-timer-text').innerText = `${quizTimeLeft}s`;
     
@@ -441,7 +530,7 @@ function loadQuizQuestion() {
         
         if (quizTimeLeft <= 0) {
             clearInterval(quizTimerInterval);
-            handleQuizAnswer(null, q.resposta_correta, null); // Tempo esgotado (Errou)
+            handleQuizAnswer(null, q.resposta_correta, null); 
         }
     }, 1000);
 }
@@ -450,15 +539,14 @@ function handleQuizAnswer(selectedLetter, correctLetter, btnElement) {
     clearInterval(quizTimerInterval);
     
     const buttons = document.querySelectorAll('.quiz-opt-btn');
-    buttons.forEach(b => b.disabled = true); // Bloqueia cliques duplos
+    buttons.forEach(b => b.disabled = true); 
 
     if (selectedLetter === correctLetter) {
-        if(btnElement) btnElement.style.background = "#48bb78"; // Acertou (Verde)
+        if(btnElement) btnElement.style.background = "#48bb78"; 
         quizHits++;
     } else {
-        if(btnElement) btnElement.style.background = "#fc8181"; // Errou (Vermelho)
+        if(btnElement) btnElement.style.background = "#fc8181"; 
         quizMisses++;
-        // Pinta a correta de verde para o usuário aprender
         buttons.forEach(b => {
             if(b.innerText.startsWith(correctLetter)) b.style.background = "#48bb78";
         });
@@ -480,8 +568,7 @@ document.getElementById('btn-stop-quiz').addEventListener('click', () => {
 async function endQuiz() {
     clearInterval(quizTimerInterval);
     
-    // Salvar pontuação
-    const totalPontosPartida = quizHits * 10; // 10 pontos por acerto
+    const totalPontosPartida = quizHits * 10; 
     if (currentUser && quizHits > 0) {
         const userRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}`);
         const snapshot = await get(userRef);
@@ -504,8 +591,6 @@ window.leaveQuiz = () => {
 // ==========================================
 // LÓGICA DO ADMINISTRADOR (TXT E JSON)
 // ==========================================
-
-// Importar QUIZ (.TXT)
 document.getElementById('btn-import-quiz').addEventListener('click', async () => {
     const fileInput = document.getElementById('quiz-txt-input');
     const statusText = document.getElementById('quiz-import-status');
@@ -523,7 +608,6 @@ document.getElementById('btn-import-quiz').addEventListener('click', async () =>
         reader.onload = async (e) => {
             try {
                 const text = e.target.result;
-                // Divide o texto pelo padrão "Pergunta "
                 const blocos = text.split(/Pergunta \d+:/).filter(b => b.trim() !== "");
                 let qtdImportada = 0;
 
@@ -542,7 +626,6 @@ document.getElementById('btn-import-quiz').addEventListener('click', async () =>
                             const textoOpcao = linha.substring(2).trim();
                             opcoes[letra] = textoOpcao;
                         } else if (linha.startsWith("Resposta:")) {
-                            // Extrai apenas a letra da resposta (ex: c)
                             const match = linha.match(/Resposta:\s*([a-e])\)/i);
                             if (match) resposta = match[1].toLowerCase();
                         }
@@ -570,7 +653,6 @@ document.getElementById('btn-import-quiz').addEventListener('click', async () =>
     }
 });
 
-// Importar BÍBLIA (.JSON)
 document.getElementById('btn-import-json').addEventListener('click', async () => {
     const fileInput = document.getElementById('json-file-input');
     const versionSelect = document.getElementById('admin-import-version').value;
