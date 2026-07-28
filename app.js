@@ -16,13 +16,14 @@ const firebaseConfig = {
 const GROQ_API_KEY = "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"; 
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app); // O getAuth foi removido, agora usamos apenas o banco de dados
+const db = getDatabase(app); 
 
 let currentUser = null;
 let isAdmin = false;
 let studyTimer;
 let secondsStudied = 0;
 let currentAIText = ""; 
+let wakeLock = null; // Variável para controlar a tela sempre ligada
 
 // Variáveis Globais do Quiz
 let quizQuestions = [];
@@ -36,6 +37,40 @@ let maxTimePerQuestion = 20;
 const bibleStructure = {
     "Gênesis": 50, "Êxodo": 40, "Levítico": 27, "Números": 36, "Deuteronômio": 34, "Josué": 24, "Juízes": 21, "Rute": 4, "1 Samuel": 31, "2 Samuel": 24, "1 Reis": 22, "2 Reis": 25, "1 Crônicas": 29, "2 Crônicas": 36, "Esdras": 10, "Neemias": 13, "Ester": 10, "Jó": 42, "Salmos": 150, "Provérbios": 31, "Eclesiastes": 12, "Cânticos": 8, "Isaías": 66, "Jeremias": 52, "Lamentações": 5, "Ezequiel": 48, "Daniel": 12, "Oséias": 14, "Joel": 3, "Amós": 9, "Obadias": 1, "Jonas": 4, "Miquéias": 7, "Naum": 3, "Habacuque": 3, "Sofonias": 3, "Ageu": 2, "Zacarias": 14, "Malaquias": 4,
     "Mateus": 28, "Marcos": 16, "Lucas": 24, "João": 21, "Atos": 28, "Romanos": 16, "1 Coríntios": 16, "2 Coríntios": 13, "Gálatas": 6, "Efésios": 6, "Filipenses": 4, "Colossenses": 4, "1 Tessalonicenses": 5, "2 Tessalonicenses": 3, "1 Timóteo": 6, "2 Timóteo": 4, "Tito": 3, "Filemom": 1, "Hebreus": 13, "Tiago": 5, "1 Pedro": 5, "2 Pedro": 3, "1 João": 5, "2 João": 1, "3 João": 1, "Judas": 1, "Apocalipse": 22
+};
+
+// ==========================================
+// FUNÇÕES DE TELA (WAKE LOCK E AUTO-LOGIN)
+// ==========================================
+
+// Travar a tela para não apagar
+async function requestWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            console.log('Tela travada (não vai apagar)');
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+        }
+    }
+}
+
+// Se o usuário minimizar o app e voltar, pedir a trava de tela de novo
+document.addEventListener('visibilitychange', async () => {
+    if (wakeLock !== null && document.visibilityState === 'visible') {
+        requestWakeLock();
+    }
+});
+
+// Auto-Login ao carregar a página
+window.onload = () => {
+    const savedUser = localStorage.getItem('teologia_user_session');
+    if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        currentUser = { uid: parsed.uid, email: parsed.email };
+        isAdmin = parsed.isAdmin;
+        loadDashboard();
+    }
 };
 
 function initBibleNavigation() {
@@ -79,16 +114,12 @@ window.openScreen = (screenId) => {
 
 
 // ==========================================
-// SISTEMA DE AUTENTICAÇÃO CUSTOMIZADO (REALTIME DATABASE)
+// SISTEMA DE AUTENTICAÇÃO CUSTOMIZADO
 // ==========================================
-
-// O Firebase não aceita pontos ou caracteres especiais no nome da chave (nó). 
-// Essa função transforma "patrick.silva@gmail.com" em "patrick_silva_gmail_com"
 function sanitizeKey(email) {
     return email.replace(/[.#$[\]/]/g, '_');
 }
 
-// LOGIN
 document.getElementById('btn-login').addEventListener('click', async () => {
     const emailInput = document.getElementById('email').value.trim();
     const passInput = document.getElementById('password').value;
@@ -100,11 +131,14 @@ document.getElementById('btn-login').addEventListener('click', async () => {
         return;
     }
 
-    // Regra Exclusiva do Administrador
     if (emailInput === 'au.costa' && passInput === '80605276') {
         currentUser = { uid: 'admin_au_costa', email: 'au.costa' };
         isAdmin = true;
         errorMsg.innerText = "";
+        
+        // Salvar sessão
+        localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
+        
         loadDashboard();
         return;
     }
@@ -118,11 +152,14 @@ document.getElementById('btn-login').addEventListener('click', async () => {
         
         if (snapshot.exists()) {
             const userData = snapshot.val();
-            // Verifica se a senha gravada no banco bate com a digitada
             if (userData.password === passInput) {
                 currentUser = { uid: userKey, email: emailInput };
                 isAdmin = false;
                 errorMsg.innerText = "";
+                
+                // Salvar sessão
+                localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
+                
                 loadDashboard();
             } else {
                 errorMsg.style.color = "#fc8181";
@@ -135,11 +172,9 @@ document.getElementById('btn-login').addEventListener('click', async () => {
     } catch (error) {
         errorMsg.style.color = "#fc8181";
         errorMsg.innerText = "Erro ao conectar ao banco de dados.";
-        console.error(error);
     }
 });
 
-// CRIAR CONTA (REGISTRO)
 document.getElementById('btn-register').addEventListener('click', async () => {
     const emailInput = document.getElementById('email').value.trim();
     const passInput = document.getElementById('password').value;
@@ -157,7 +192,6 @@ document.getElementById('btn-register').addEventListener('click', async () => {
         return;
     }
 
-    // Bloqueia a criação de usuários tentando se passar por admin
     if (emailInput.toLowerCase() === 'au.costa' || emailInput.toLowerCase() === 'admin_au_costa') {
         errorMsg.style.color = "#fc8181";
         errorMsg.innerText = "Nome de usuário reservado pelo sistema.";
@@ -175,7 +209,6 @@ document.getElementById('btn-register').addEventListener('click', async () => {
             errorMsg.style.color = "#fc8181";
             errorMsg.innerText = "Este usuário já existe. Tente fazer o login.";
         } else {
-            // Salva o novo usuário no Realtime Database com os campos zerados
             await set(ref(db, `Biblia_Estudo/Users/${userKey}`), {
                 email: emailInput,
                 password: passInput,
@@ -186,18 +219,23 @@ document.getElementById('btn-register').addEventListener('click', async () => {
             currentUser = { uid: userKey, email: emailInput };
             isAdmin = false;
             errorMsg.innerText = "";
-            loadDashboard(); // Redireciona e loga automaticamente
+            
+            // Salvar sessão
+            localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
+            
+            loadDashboard(); 
         }
     } catch (error) {
         errorMsg.style.color = "#fc8181";
         errorMsg.innerText = "Erro ao criar conta. Verifique sua conexão.";
-        console.error(error);
     }
 });
 
 document.getElementById('btn-logout').addEventListener('click', () => {
     currentUser = null;
     isAdmin = false;
+    localStorage.removeItem('teologia_user_session'); // Limpa a sessão
+    
     openScreen('login-screen');
     document.getElementById('email').value = '';
     document.getElementById('password').value = '';
@@ -225,6 +263,7 @@ async function loadDashboard() {
 // MÓDULO: ESTUDO E ANOTAÇÕES
 // ==========================================
 function startStudySession() {
+    requestWakeLock(); // Liga a trava de tela
     secondsStudied = 0;
     document.getElementById('session-timer').innerText = "00:00";
     studyTimer = setInterval(() => {
@@ -237,6 +276,13 @@ function startStudySession() {
 
 window.leaveStudy = async () => {
     clearInterval(studyTimer);
+    
+    // Libera a tela para apagar normalmente
+    if (wakeLock !== null) {
+        await wakeLock.release();
+        wakeLock = null;
+    }
+
     if (currentUser) {
         const userRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}`);
         const snapshot = await get(userRef);
@@ -294,7 +340,6 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
     }
 });
 
-// SALVAR ESTUDO DO USUÁRIO
 document.getElementById('btn-save-notes').addEventListener('click', async () => {
     const notesText = document.getElementById('study-notes').value;
     const book = document.getElementById('bible-book').value;
@@ -327,7 +372,6 @@ document.getElementById('btn-save-notes').addEventListener('click', async () => 
     }
 });
 
-// CARREGAR ANOTAÇÕES
 async function loadMyNotes() {
     const container = document.getElementById('my-notes-container');
     container.innerHTML = '<p class="placeholder-text">Buscando seus estudos...</p>';
@@ -360,7 +404,7 @@ async function loadMyNotes() {
 }
 
 // ==========================================
-// MÓDULO: SUPER PROFESSOR (GROQ API)
+// MÓDULO: SUPER PROFESSOR (GROQ API + CACHE INTELIGENTE)
 // ==========================================
 window.analyzeVerse = async (book, chapter, verseNum, element) => {
     const verseText = element.querySelector('.v-text-content').innerText;
@@ -374,15 +418,34 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
     content.innerHTML = `
         <div style="text-align: center; padding: 20px;">
             <p style="color: #63b3ed; font-weight: bold; font-size: 1.2em;">Analisando as Escrituras...</p>
-            <p class="dict-sub">Buscando exegese e contexto original. Aguarde ⏳</p>
+            <p class="dict-sub">Buscando no banco de dados e preparando exegese. Aguarde ⏳</p>
         </div>`;
     modal.style.display = 'block';
 
-    if (GROQ_API_KEY === "SUA_CHAVE_GROQ_AQUI" || GROQ_API_KEY === "") {
-        content.innerHTML = '<p class="error-msg">⚠️ Insira sua chave da API da Groq no arquivo app.js.</p>'; return;
-    }
+    // Cria uma chave segura para salvar esse versículo no cache do banco de dados
+    const cacheKey = sanitizeKey(`${book}_${chapter}_${verseNum}`);
 
     try {
+        // 1. Verifica se já existe esse estudo no Cache do Firebase
+        const cacheSnapshot = await get(child(ref(db), `Biblia_Estudo/AI_Cache/${cacheKey}`));
+        
+        if (cacheSnapshot.exists()) {
+            // Se já existe, pega do banco e não gasta a API
+            let cachedHTML = cacheSnapshot.val().html;
+            
+            // Adiciona uma tag visual de que veio do cache
+            content.innerHTML = `<span style="font-size: 0.8em; color: #48bb78; border: 1px solid #48bb78; padding: 2px 6px; border-radius: 12px; margin-bottom: 15px; display: inline-block;">⚡ Carregamento Rápido (Cache)</span><br>` + cachedHTML;
+            
+            currentAIText = `[EXEGESE IA] ${book} ${chapter}:${verseNum}\n\n` + cachedHTML.replace(/<[^>]*>?/gm, ''); 
+            copyBtn.style.display = 'block';
+            return; // Encerra a função aqui, sem ir pra Groq
+        }
+
+        // 2. Se não existir no cache, continua e pede pra API da Groq
+        if (GROQ_API_KEY === "SUA_CHAVE_GROQ_AQUI" || GROQ_API_KEY === "") {
+            content.innerHTML = '<p class="error-msg">⚠️ Insira sua chave da API da Groq no arquivo app.js.</p>'; return;
+        }
+
         const systemPrompt = `Você é um Doutor em Teologia, mestre em exegese bíblica, hebraico, grego e hermenêutica. Responda ESTRITAMENTE em código HTML puro (<div>, <p>, <h3>, <ul>, <li>, <strong>, <br>). PROIBIDO usar marcação markdown como \`\`\`html. O texto deve fluir de maneira impactante.`;
         const userPrompt = `Faça uma exegese de: ${book} ${chapter}:${verseNum} - "${verseText}".
         Siga OBRIGATORIAMENTE esta estrutura HTML:
@@ -399,9 +462,17 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
 
         const data = await response.json();
         let aiHTML = data.choices[0].message.content.replace(/```html/g, '').replace(/```/g, ''); 
+        
+        // Exibe pro usuário
         content.innerHTML = aiHTML;
         currentAIText = `[EXEGESE IA] ${book} ${chapter}:${verseNum}\n\n` + aiHTML.replace(/<[^>]*>?/gm, ''); 
         copyBtn.style.display = 'block';
+
+        // 3. Salva no banco de dados para o próximo que pesquisar esse mesmo versículo!
+        await set(ref(db, `Biblia_Estudo/AI_Cache/${cacheKey}`), {
+            html: aiHTML
+        });
+
     } catch (error) {
         content.innerHTML = '<p class="error-msg">Erro de conexão ao gerar o estudo teológico.</p>';
     }
