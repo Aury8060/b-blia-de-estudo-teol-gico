@@ -1,0 +1,78 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background-color: #1a202c; color: #e2e8f0; }
+
+.screen { display: none; padding: 20px; min-height: 100vh; max-width: 800px; margin: 0 auto; }
+.screen.active { display: block; }
+
+/* Login */
+.login-box { max-width: 400px; margin: 100px auto; background: #2d3748; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); }
+.login-box h1 { color: #63b3ed; margin-bottom: 10px; }
+input, select, textarea { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #4a5568; background: #1a202c; color: white; font-size: 16px; outline: none;}
+input:focus, select:focus, textarea:focus { border-color: #63b3ed; }
+input[type="file"] { cursor: pointer; }
+input[type="range"] { padding: 0; }
+button { width: 100%; padding: 12px; background: #3182ce; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 16px; transition: 0.3s; }
+button:hover { background: #2b6cb0; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-outline { background: transparent; border: 1px solid #3182ce; color: #3182ce; }
+.error-msg { color: #fc8181; font-size: 0.9em; margin-top: 10px; }
+
+/* Header & Dashboard */
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid #4a5568; padding-bottom: 15px; }
+header button { width: auto; padding: 8px 16px; margin: 0; background: #4a5568; }
+.user-info { display: flex; align-items: center; gap: 15px; }
+#profile-pic { width: 50px; height: 50px; border-radius: 50%; background: #4a5568; object-fit: cover; }
+.badge { background: #ecc94b; color: #744210; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
+#admin-panel-btn { background: #e53e3e; } #admin-panel-btn:hover { background: #c53030; }
+
+.stats-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+.card { background: #2d3748; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.card h3 { font-size: 1em; color: #a0aec0; margin-bottom: 10px; }
+.card p { font-size: 1.5em; font-weight: bold; color: #48bb78; }
+
+.menu-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+.menu-btn { background: #4a5568; font-size: 1.1em; text-align: left; padding: 20px; display: flex; align-items: center; justify-content: space-between; }
+.menu-btn:hover { background: #2d3748; }
+
+/* Estudo & Controles */
+.study-content { background: #2d3748; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.study-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #1a202c; padding: 15px; border-radius: 8px; border: 1px solid #4a5568; }
+.study-controls select { margin: 0; }
+.study-controls button { margin: 0; margin-top: 5px; background: #48bb78; }
+.study-controls button:hover { background: #38a169; }
+
+/* Leitor da Bíblia e Agenda IA */
+.bible-reader { background: #1a202c; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #63b3ed; max-height: 50vh; overflow-y: auto; line-height: 1.6; font-size: 1.1em; }
+.bible-reader p { margin-bottom: 15px; }
+.bible-reader strong { color: #63b3ed; margin-right: 5px; }
+.placeholder-text { color: #a0aec0; text-align: center; font-style: italic; font-size: 0.95em; }
+
+/* Interação dos Versículos para o Super Professor */
+.verse-text { padding: 8px 10px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid transparent; transition: all 0.2s ease; cursor: pointer; }
+.verse-text:hover { background-color: #2d3748; border-left: 3px solid #ecc94b; }
+.v-text-content { display: inline; }
+
+.strong-link { color: #ecc94b; cursor: pointer; font-size: 0.8em; vertical-align: super; text-decoration: underline; background: rgba(236, 201, 75, 0.1); padding: 2px 4px; border-radius: 4px; }
+.strong-link:hover { color: #d69e2e; background: rgba(236, 201, 75, 0.2); }
+
+textarea { height: 120px; resize: none; margin-bottom: 15px; }
+#session-timer { font-size: 1.2em; font-weight: bold; color: #fc8181; }
+
+/* Modal do Dicionário e do Super Professor */
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+.modal-content { background-color: #2d3748; margin: 10% auto; padding: 25px; border: 1px solid #4a5568; width: 90%; max-width: 600px; border-radius: 12px; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+.close-btn { color: #a0aec0; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 1; }
+.close-btn:hover { color: #fc8181; }
+.modal-content h3 { color: #63b3ed; margin-bottom: 5px; }
+.dict-sub { color: #a0aec0; font-style: italic; margin-bottom: 10px; font-size: 0.9em; }
+.modal-content hr { border: 0; border-top: 1px solid #4a5568; margin-bottom: 15px; }
+.modal-content p { line-height: 1.5; }
+
+/* Estilos IA (Super Professor & Agenda) */
+.ai-modal-content { max-height: 80vh; overflow-y: auto; }
+.ai-content, #ai-plan-content { line-height: 1.6; color: #e2e8f0; font-size: 1.05em; }
+.ai-content h3, #ai-plan-content h3 { color: #ecc94b; margin: 20px 0 10px 0; border-bottom: 1px solid #4a5568; padding-bottom: 5px; font-size: 1.15em; }
+.ai-content p, #ai-plan-content p { margin-bottom: 15px; }
+.ai-content ul, #ai-plan-content ul { margin-left: 20px; margin-bottom: 15px; }
+.ai-content li, #ai-plan-content li { margin-bottom: 8px; }
+.ai-content strong, #ai-plan-content strong { color: #63b3ed; }
