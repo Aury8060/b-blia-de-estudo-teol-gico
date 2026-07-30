@@ -23,7 +23,7 @@ let isAdmin = false;
 let studyTimer;
 let secondsStudied = 0;
 let currentAIText = ""; 
-let wakeLock = null; // Variável para controlar a tela sempre ligada
+let wakeLock = null; 
 
 // Variáveis Globais do Quiz
 let quizQuestions = [];
@@ -42,27 +42,22 @@ const bibleStructure = {
 // ==========================================
 // FUNÇÕES DE TELA (WAKE LOCK E AUTO-LOGIN)
 // ==========================================
-
-// Travar a tela para não apagar
 async function requestWakeLock() {
     if ('wakeLock' in navigator) {
         try {
             wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Tela travada (não vai apagar)');
         } catch (err) {
             console.error(`${err.name}, ${err.message}`);
         }
     }
 }
 
-// Se o usuário minimizar o app e voltar, pedir a trava de tela de novo
 document.addEventListener('visibilitychange', async () => {
     if (wakeLock !== null && document.visibilityState === 'visible') {
         requestWakeLock();
     }
 });
 
-// Auto-Login ao carregar a página
 window.onload = () => {
     const savedUser = localStorage.getItem('teologia_user_session');
     if (savedUser) {
@@ -112,7 +107,6 @@ window.openScreen = (screenId) => {
     if (screenId === 'notes-screen') loadMyNotes();
 };
 
-
 // ==========================================
 // SISTEMA DE AUTENTICAÇÃO CUSTOMIZADO
 // ==========================================
@@ -135,10 +129,7 @@ document.getElementById('btn-login').addEventListener('click', async () => {
         currentUser = { uid: 'admin_au_costa', email: 'au.costa' };
         isAdmin = true;
         errorMsg.innerText = "";
-        
-        // Salvar sessão
         localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
-        
         loadDashboard();
         return;
     }
@@ -156,10 +147,7 @@ document.getElementById('btn-login').addEventListener('click', async () => {
                 currentUser = { uid: userKey, email: emailInput };
                 isAdmin = false;
                 errorMsg.innerText = "";
-                
-                // Salvar sessão
                 localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
-                
                 loadDashboard();
             } else {
                 errorMsg.style.color = "#fc8181";
@@ -219,10 +207,7 @@ document.getElementById('btn-register').addEventListener('click', async () => {
             currentUser = { uid: userKey, email: emailInput };
             isAdmin = false;
             errorMsg.innerText = "";
-            
-            // Salvar sessão
             localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
-            
             loadDashboard(); 
         }
     } catch (error) {
@@ -234,7 +219,7 @@ document.getElementById('btn-register').addEventListener('click', async () => {
 document.getElementById('btn-logout').addEventListener('click', () => {
     currentUser = null;
     isAdmin = false;
-    localStorage.removeItem('teologia_user_session'); // Limpa a sessão
+    localStorage.removeItem('teologia_user_session'); 
     
     openScreen('login-screen');
     document.getElementById('email').value = '';
@@ -263,7 +248,7 @@ async function loadDashboard() {
 // MÓDULO: ESTUDO E ANOTAÇÕES
 // ==========================================
 function startStudySession() {
-    requestWakeLock(); // Liga a trava de tela
+    requestWakeLock(); 
     secondsStudied = 0;
     document.getElementById('session-timer').innerText = "00:00";
     studyTimer = setInterval(() => {
@@ -277,7 +262,6 @@ function startStudySession() {
 window.leaveStudy = async () => {
     clearInterval(studyTimer);
     
-    // Libera a tela para apagar normalmente
     if (wakeLock !== null) {
         await wakeLock.release();
         wakeLock = null;
@@ -404,7 +388,7 @@ async function loadMyNotes() {
 }
 
 // ==========================================
-// MÓDULO: SUPER PROFESSOR (GROQ API + CACHE INTELIGENTE)
+// MÓDULO: SUPER PROFESSOR EXAUSTIVO (GROQ API + CACHE INTELIGENTE)
 // ==========================================
 window.analyzeVerse = async (book, chapter, verseNum, element) => {
     const verseText = element.querySelector('.v-text-content').innerText;
@@ -417,64 +401,84 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
     copyBtn.style.display = 'none';
     content.innerHTML = `
         <div style="text-align: center; padding: 20px;">
-            <p style="color: #63b3ed; font-weight: bold; font-size: 1.2em;">Analisando as Escrituras...</p>
-            <p class="dict-sub">Buscando no banco de dados e preparando exegese. Aguarde ⏳</p>
+            <p style="color: #63b3ed; font-weight: bold; font-size: 1.2em;">Construindo Rota de Estudo Exaustiva...</p>
+            <p class="dict-sub">Analisando contexto, raízes linguísticas e buscando dezenas de referências cruzadas. Aguarde ⏳</p>
         </div>`;
     modal.style.display = 'block';
 
-    // Cria uma chave segura para salvar esse versículo no cache do banco de dados
     const cacheKey = sanitizeKey(`${book}_${chapter}_${verseNum}`);
 
     try {
-        // 1. Verifica se já existe esse estudo no Cache do Firebase
-        const cacheSnapshot = await get(child(ref(db), `Biblia_Estudo/AI_Cache/${cacheKey}`));
+        const cacheSnapshot = await get(child(ref(db), `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`));
         
         if (cacheSnapshot.exists()) {
-            // Se já existe, pega do banco e não gasta a API
             let cachedHTML = cacheSnapshot.val().html;
-            
-            // Adiciona uma tag visual de que veio do cache
             content.innerHTML = `<span style="font-size: 0.8em; color: #48bb78; border: 1px solid #48bb78; padding: 2px 6px; border-radius: 12px; margin-bottom: 15px; display: inline-block;">⚡ Carregamento Rápido (Cache)</span><br>` + cachedHTML;
-            
-            currentAIText = `[EXEGESE IA] ${book} ${chapter}:${verseNum}\n\n` + cachedHTML.replace(/<[^>]*>?/gm, ''); 
+            currentAIText = `[ESTUDO EXAUSTIVO] ${book} ${chapter}:${verseNum}\n\n` + cachedHTML.replace(/<[^>]*>?/gm, ''); 
             copyBtn.style.display = 'block';
-            return; // Encerra a função aqui, sem ir pra Groq
+            return; 
         }
 
-        // 2. Se não existir no cache, continua e pede pra API da Groq
         if (GROQ_API_KEY === "SUA_CHAVE_GROQ_AQUI" || GROQ_API_KEY === "") {
             content.innerHTML = '<p class="error-msg">⚠️ Insira sua chave da API da Groq no arquivo app.js.</p>'; return;
         }
 
-        const systemPrompt = `Você é um Doutor em Teologia, mestre em exegese bíblica, hebraico, grego e hermenêutica. Responda ESTRITAMENTE em código HTML puro (<div>, <p>, <h3>, <ul>, <li>, <strong>, <br>). PROIBIDO usar marcação markdown como \`\`\`html. O texto deve fluir de maneira impactante.`;
-        const userPrompt = `Faça uma exegese de: ${book} ${chapter}:${verseNum} - "${verseText}".
+        // PROMPT SUPREMO DE TEOLOGIA EXAUSTIVA
+        const systemPrompt = `Você é o maior Doutor em Teologia e Exegese Bíblica do mundo, mestre em hebraico, aramaico e grego. 
+        Sua missão é fornecer o estudo mais completo, exaustivo e profundo possível para cada versículo. O aluno precisa de uma rota de estudo completa, não apenas um resumo. 
+        Mapeie todas as conexões bíblicas possíveis (Antigo e Novo Testamento). 
+        Responda ESTRITAMENTE em código HTML puro (<div>, <p>, <h3>, <ul>, <li>, <strong>, <em>, <br>). PROIBIDO usar marcação markdown como \`\`\`html. O texto deve fluir de maneira impactante, professoral e incrivelmente densa. Não economize nas palavras.`;
+        
+        const userPrompt = `Faça uma exegese teológica EXAUSTIVA e incrivelmente aprofundada do versículo: ${book} ${chapter}:${verseNum} - "${verseText}".
+
         Siga OBRIGATORIAMENTE esta estrutura HTML:
-        <h3>🔗 Referências Cruzadas</h3><p>[Conexões bíblicas]</p>
-        <h3>📜 Contexto Histórico</h3><p>[Cenário da época]</p>
-        <h3>🧠 Exegese Profunda</h3><p>[Significado teológico, hebraico/grego se houver]</p>
-        <h3>🔥 Aplicação</h3><p>[Reflexão encorajadora]</p>`;
+        
+        <h3>🔗 Referências Cruzadas (O Cânon Completo)</h3>
+        <p>[Mapeie exaustivamente as conexões deste versículo com o restante da Bíblia. Traga diversas referências de profecias, cumprimentos, paralelos temáticos e passagens de apoio de diferentes livros. Explique o porquê da conexão de cada uma. Crie uma rota de estudo completa.]</p>
+        
+        <h3>📜 Contexto Histórico, Geográfico e Cultural</h3>
+        <p>[Mergulhe fundo. Quem escreveu? Para quem? O que estava acontecendo na política, sociedade e geografia da época? Quais costumes explicam esse texto? Como era a mentalidade dos destinatários originais?]</p>
+        
+        <h3>🗣️ Análise Linguística Original (Hebraico/Grego)</h3>
+        <p>[Desvende as palavras originais mais importantes. Qual é a raiz morfológica? Como a palavra era usada naquela cultura? Mostre as nuances e riquezas que as traduções em português não conseguem capturar totalmente.]</p>
+        
+        <h3>🧠 Teologia Sistemática e Exegese Profunda</h3>
+        <p>[Qual é o peso doutrinário dessa passagem? Qual pilar da fé ela sustenta? Como isso se encaixa no plano perfeito e soberano de redenção de Deus ao longo dos séculos?]</p>
+        
+        <h3>🔥 Aplicação e Transformação</h3>
+        <p>[Conclua com uma reflexão poderosa, madura e transformadora, que desafie o aluno a viver as verdades que acabou de estudar na prática cristã contemporânea.]</p>`;
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-            body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], temperature: 0.7 })
+            body: JSON.stringify({ 
+                model: "llama-3.3-70b-versatile", 
+                messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], 
+                temperature: 0.7,
+                max_tokens: 6000 // Aumentado para suportar estudos muito longos e exaustivos
+            })
         });
 
         const data = await response.json();
+        
+        if(data.error) {
+             content.innerHTML = `<p class="error-msg">Erro na API da Groq: ${data.error.message}</p>`; return;
+        }
+
         let aiHTML = data.choices[0].message.content.replace(/```html/g, '').replace(/```/g, ''); 
         
-        // Exibe pro usuário
         content.innerHTML = aiHTML;
-        currentAIText = `[EXEGESE IA] ${book} ${chapter}:${verseNum}\n\n` + aiHTML.replace(/<[^>]*>?/gm, ''); 
+        currentAIText = `[ESTUDO EXAUSTIVO] ${book} ${chapter}:${verseNum}\n\n` + aiHTML.replace(/<[^>]*>?/gm, ''); 
         copyBtn.style.display = 'block';
 
-        // 3. Salva no banco de dados para o próximo que pesquisar esse mesmo versículo!
-        await set(ref(db, `Biblia_Estudo/AI_Cache/${cacheKey}`), {
+        // Salva na rota nova de cache exaustivo
+        await set(ref(db, `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`), {
             html: aiHTML
         });
 
     } catch (error) {
         content.innerHTML = '<p class="error-msg">Erro de conexão ao gerar o estudo teológico.</p>';
+        console.error(error);
     }
 };
 
@@ -529,7 +533,6 @@ document.getElementById('btn-generate-plan').addEventListener('click', async () 
         planDiv.innerHTML = '<p class="error-msg">Erro ao gerar o plano. Tente novamente.</p>';
     }
 });
-
 
 // ==========================================
 // MÓDULO: QUIZ (JOGO E ADMINISTRAÇÃO)
