@@ -13,7 +13,7 @@ const firebaseConfig = {
 };
 
 // 🔑 CHAVE DA GROQ
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app); 
