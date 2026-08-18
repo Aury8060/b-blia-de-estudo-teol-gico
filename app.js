@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, get, update, remove, child, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getDatabase, ref, set, get, update, remove, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCFO8ut8FhrTcXIaq4SVpIi5q_BHPEHVcg",
@@ -12,60 +13,22 @@ const firebaseConfig = {
     databaseURL: "https://biblia-estudo-a43c0-default-rtdb.firebaseio.com/"
 };
 
-// 🔑 CHAVE DA GROQ
+// 🔑 COLOQUE SUA CHAVE DA GROQ AQUI 
 const GROQ_API_KEY = "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"; 
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app); 
+const auth = getAuth(app);
+const db = getDatabase(app);
 
 let currentUser = null;
 let isAdmin = false;
 let studyTimer;
 let secondsStudied = 0;
-let currentAIText = ""; 
-let wakeLock = null; 
-
-// Variáveis Globais do Quiz
-let quizQuestions = [];
-let currentQuizIndex = 0;
-let quizHits = 0;
-let quizMisses = 0;
-let quizTimerInterval;
-let quizTimeLeft = 20;
-let maxTimePerQuestion = 20;
+let currentAIText = ""; // Armazena o texto da IA para ser copiado
 
 const bibleStructure = {
     "Gênesis": 50, "Êxodo": 40, "Levítico": 27, "Números": 36, "Deuteronômio": 34, "Josué": 24, "Juízes": 21, "Rute": 4, "1 Samuel": 31, "2 Samuel": 24, "1 Reis": 22, "2 Reis": 25, "1 Crônicas": 29, "2 Crônicas": 36, "Esdras": 10, "Neemias": 13, "Ester": 10, "Jó": 42, "Salmos": 150, "Provérbios": 31, "Eclesiastes": 12, "Cânticos": 8, "Isaías": 66, "Jeremias": 52, "Lamentações": 5, "Ezequiel": 48, "Daniel": 12, "Oséias": 14, "Joel": 3, "Amós": 9, "Obadias": 1, "Jonas": 4, "Miquéias": 7, "Naum": 3, "Habacuque": 3, "Sofonias": 3, "Ageu": 2, "Zacarias": 14, "Malaquias": 4,
     "Mateus": 28, "Marcos": 16, "Lucas": 24, "João": 21, "Atos": 28, "Romanos": 16, "1 Coríntios": 16, "2 Coríntios": 13, "Gálatas": 6, "Efésios": 6, "Filipenses": 4, "Colossenses": 4, "1 Tessalonicenses": 5, "2 Tessalonicenses": 3, "1 Timóteo": 6, "2 Timóteo": 4, "Tito": 3, "Filemom": 1, "Hebreus": 13, "Tiago": 5, "1 Pedro": 5, "2 Pedro": 3, "1 João": 5, "2 João": 1, "3 João": 1, "Judas": 1, "Apocalipse": 22
-};
-
-// ==========================================
-// FUNÇÕES DE TELA (WAKE LOCK E AUTO-LOGIN)
-// ==========================================
-async function requestWakeLock() {
-    if ('wakeLock' in navigator) {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-        } catch (err) {
-            console.error(`${err.name}, ${err.message}`);
-        }
-    }
-}
-
-document.addEventListener('visibilitychange', async () => {
-    if (wakeLock !== null && document.visibilityState === 'visible') {
-        requestWakeLock();
-    }
-});
-
-window.onload = () => {
-    const savedUser = localStorage.getItem('teologia_user_session');
-    if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        currentUser = { uid: parsed.uid, email: parsed.email };
-        isAdmin = parsed.isAdmin;
-        loadDashboard();
-    }
 };
 
 function initBibleNavigation() {
@@ -96,141 +59,50 @@ function initBibleNavigation() {
             chapterSelect.appendChild(option);
         }
     });
+
     bookSelect.dispatchEvent(new Event('change'));
 }
 
 window.openScreen = (screenId) => {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
-    
     if (screenId === 'study-screen') startStudySession();
-    if (screenId === 'notes-screen') loadMyNotes();
 };
 
-// ==========================================
-// SISTEMA DE AUTENTICAÇÃO CUSTOMIZADO
-// ==========================================
-function sanitizeKey(email) {
-    return email.replace(/[.#$[\]/]/g, '_');
-}
-
 document.getElementById('btn-login').addEventListener('click', async () => {
-    const emailInput = document.getElementById('email').value.trim();
+    const emailInput = document.getElementById('email').value;
     const passInput = document.getElementById('password').value;
-    const errorMsg = document.getElementById('auth-error');
-
-    if (!emailInput || !passInput) {
-        errorMsg.style.color = "#fc8181";
-        errorMsg.innerText = "Preencha o usuário e a senha.";
-        return;
-    }
 
     if (emailInput === 'au.costa' && passInput === '80605276') {
-        currentUser = { uid: 'admin_au_costa', email: 'au.costa' };
+        currentUser = { uid: 'admin_au_costa', name: 'AU Costa' };
         isAdmin = true;
-        errorMsg.innerText = "";
-        localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
         loadDashboard();
         return;
     }
 
     try {
-        errorMsg.style.color = "#a0aec0";
-        errorMsg.innerText = "Verificando dados...";
-        
-        const userKey = sanitizeKey(emailInput);
-        const snapshot = await get(child(ref(db), `Biblia_Estudo/Users/${userKey}`));
-        
-        if (snapshot.exists()) {
-            const userData = snapshot.val();
-            if (userData.password === passInput) {
-                currentUser = { uid: userKey, email: emailInput };
-                isAdmin = false;
-                errorMsg.innerText = "";
-                localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
-                loadDashboard();
-            } else {
-                errorMsg.style.color = "#fc8181";
-                errorMsg.innerText = "Senha incorreta.";
-            }
-        } else {
-            errorMsg.style.color = "#fc8181";
-            errorMsg.innerText = "Usuário não encontrado. Crie uma conta.";
-        }
+        const userCredential = await signInWithEmailAndPassword(auth, emailInput, passInput);
+        currentUser = userCredential.user;
+        isAdmin = false;
+        loadDashboard();
     } catch (error) {
-        errorMsg.style.color = "#fc8181";
-        errorMsg.innerText = "Erro ao conectar ao banco de dados.";
-    }
-});
-
-document.getElementById('btn-register').addEventListener('click', async () => {
-    const emailInput = document.getElementById('email').value.trim();
-    const passInput = document.getElementById('password').value;
-    const errorMsg = document.getElementById('auth-error');
-
-    if (!emailInput || !passInput) {
-        errorMsg.style.color = "#fc8181";
-        errorMsg.innerText = "Preencha um nome de usuário/e-mail e senha para criar a conta.";
-        return;
-    }
-
-    if (passInput.length < 6) {
-        errorMsg.style.color = "#fc8181";
-        errorMsg.innerText = "A senha deve ter no mínimo 6 caracteres.";
-        return;
-    }
-
-    if (emailInput.toLowerCase() === 'au.costa' || emailInput.toLowerCase() === 'admin_au_costa') {
-        errorMsg.style.color = "#fc8181";
-        errorMsg.innerText = "Nome de usuário reservado pelo sistema.";
-        return;
-    }
-
-    try {
-        errorMsg.style.color = "#a0aec0";
-        errorMsg.innerText = "Criando conta no banco de dados, aguarde...";
-        
-        const userKey = sanitizeKey(emailInput);
-        const snapshot = await get(child(ref(db), `Biblia_Estudo/Users/${userKey}`));
-        
-        if (snapshot.exists()) {
-            errorMsg.style.color = "#fc8181";
-            errorMsg.innerText = "Este usuário já existe. Tente fazer o login.";
-        } else {
-            await set(ref(db, `Biblia_Estudo/Users/${userKey}`), {
-                email: emailInput,
-                password: passInput,
-                tempoEstudo: 0,
-                quizScore: 0
-            });
-            
-            currentUser = { uid: userKey, email: emailInput };
-            isAdmin = false;
-            errorMsg.innerText = "";
-            localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
-            loadDashboard(); 
-        }
-    } catch (error) {
-        errorMsg.style.color = "#fc8181";
-        errorMsg.innerText = "Erro ao criar conta. Verifique sua conexão.";
+        document.getElementById('auth-error').innerText = "Erro ao logar. Verifique os dados.";
     }
 });
 
 document.getElementById('btn-logout').addEventListener('click', () => {
     currentUser = null;
     isAdmin = false;
-    localStorage.removeItem('teologia_user_session'); 
-    
     openScreen('login-screen');
     document.getElementById('email').value = '';
     document.getElementById('password').value = '';
-    document.getElementById('auth-error').innerText = '';
 });
 
 async function loadDashboard() {
     openScreen('dashboard-screen');
     document.getElementById('user-name').innerText = isAdmin ? "AU Costa" : currentUser.email;
     document.getElementById('user-role').innerText = isAdmin ? "Criador / Admin" : "Teólogo em Formação";
+    
     document.getElementById('admin-panel-btn').style.display = isAdmin ? 'block' : 'none';
 
     const dbRef = ref(db);
@@ -240,15 +112,13 @@ async function loadDashboard() {
             const data = snapshot.val();
             document.getElementById('total-time').innerText = Math.floor((data.tempoEstudo || 0) / 60) + " min";
             document.getElementById('quiz-score').innerText = (data.quizScore || 0) + " pts";
+        } else {
+            set(ref(db, `Biblia_Estudo/Users/${currentUser.uid}`), { tempoEstudo: 0, quizScore: 0 });
         }
     } catch (error) { console.error(error); }
 }
 
-// ==========================================
-// MÓDULO: ESTUDO E ANOTAÇÕES
-// ==========================================
 function startStudySession() {
-    requestWakeLock(); 
     secondsStudied = 0;
     document.getElementById('session-timer').innerText = "00:00";
     studyTimer = setInterval(() => {
@@ -261,12 +131,6 @@ function startStudySession() {
 
 window.leaveStudy = async () => {
     clearInterval(studyTimer);
-    
-    if (wakeLock !== null) {
-        await wakeLock.release();
-        wakeLock = null;
-    }
-
     if (currentUser) {
         const userRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}`);
         const snapshot = await get(userRef);
@@ -308,7 +172,8 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
                             <strong>${verseNum}</strong> <span class="v-text-content">${textoOriginal}</span> ${strongLinks}
                         </div>`;
                 } else {
-                    let textoVersao = verseData[version] ? verseData[version] : `<span style="color:#fc8181">Indisponível nesta tradução.</span>`;
+                    let textoVersao = verseData[version] ? verseData[version] : `<span style="color:#fc8181">Versículo indisponível nesta tradução.</span>`;
+                    
                     htmlContent += `
                         <div class="verse-text" onclick="analyzeVerse('${book}', '${chapter}', '${verseNum}', this)">
                             <strong>${verseNum}</strong> <span class="v-text-content">${textoVersao}</span>
@@ -317,81 +182,20 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
             }
             readerDiv.innerHTML = htmlContent;
         } else {
-            readerDiv.innerHTML = '<p class="placeholder-text error-msg">O texto deste capítulo ainda não foi importado.</p>';
+            readerDiv.innerHTML = '<p class="placeholder-text error-msg">O texto deste capítulo ainda não foi importado para o banco de dados.</p>';
         }
     } catch (error) {
         console.error("Erro ao buscar:", error);
+        readerDiv.innerHTML = '<p class="placeholder-text error-msg">Erro de conexão com o banco de dados.</p>';
     }
 });
-
-document.getElementById('btn-save-notes').addEventListener('click', async () => {
-    const notesText = document.getElementById('study-notes').value;
-    const book = document.getElementById('bible-book').value;
-    const chapter = document.getElementById('bible-chapter').value;
-    const statusText = document.getElementById('save-note-status');
-
-    if (!notesText.trim()) {
-        statusText.innerText = "❌ Escreva algo antes de salvar.";
-        statusText.style.color = "#fc8181";
-        return;
-    }
-
-    try {
-        const notesRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}/Notes`);
-        const newNoteRef = push(notesRef); 
-        await set(newNoteRef, {
-            livro: book,
-            capitulo: chapter,
-            texto: notesText,
-            data: new Date().toLocaleDateString('pt-BR')
-        });
-
-        statusText.innerText = "✅ Estudo salvo com sucesso!";
-        statusText.style.color = "#48bb78";
-        document.getElementById('study-notes').value = ""; 
-        setTimeout(() => statusText.innerText = "", 3000);
-    } catch (error) {
-        console.error(error);
-        statusText.innerText = "❌ Erro ao salvar.";
-    }
-});
-
-async function loadMyNotes() {
-    const container = document.getElementById('my-notes-container');
-    container.innerHTML = '<p class="placeholder-text">Buscando seus estudos...</p>';
-
-    if (!currentUser) return;
-
-    try {
-        const snapshot = await get(child(ref(db), `Biblia_Estudo/Users/${currentUser.uid}/Notes`));
-        if (snapshot.exists()) {
-            const notes = snapshot.val();
-            let html = '';
-            
-            const notesArray = Object.values(notes).reverse(); 
-
-            notesArray.forEach(note => {
-                html += `
-                <div class="card" style="text-align: left; margin-bottom: 15px;">
-                    <h3 style="color: #ecc94b;">📖 ${note.livro} ${note.capitulo} <span style="float: right; font-size: 0.8em; color: #a0aec0;">${note.data}</span></h3>
-                    <p style="white-space: pre-wrap; font-size: 1.05em; color: #e2e8f0; margin-top: 10px;">${note.texto}</p>
-                </div>`;
-            });
-            container.innerHTML = html;
-        } else {
-            container.innerHTML = '<p class="placeholder-text">Você ainda não salvou nenhum estudo.</p>';
-        }
-    } catch (error) {
-        console.error(error);
-        container.innerHTML = '<p class="placeholder-text error-msg">Erro ao carregar estudos.</p>';
-    }
-}
 
 // ==========================================
-// MÓDULO: SUPER PROFESSOR EXAUSTIVO (GROQ API + CACHE INTELIGENTE)
+// LÓGICA DO SUPER PROFESSOR (GROQ API)
 // ==========================================
 window.analyzeVerse = async (book, chapter, verseNum, element) => {
     const verseText = element.querySelector('.v-text-content').innerText;
+    
     const modal = document.getElementById('ai-professor-modal');
     const title = document.getElementById('ai-verse-title');
     const content = document.getElementById('ai-verse-content');
@@ -401,92 +205,86 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
     copyBtn.style.display = 'none';
     content.innerHTML = `
         <div style="text-align: center; padding: 20px;">
-            <p style="color: #63b3ed; font-weight: bold; font-size: 1.2em;">Construindo Rota de Estudo Exaustiva...</p>
-            <p class="dict-sub">Analisando contexto, raízes linguísticas e buscando dezenas de referências cruzadas. Aguarde ⏳</p>
+            <p style="color: #63b3ed; font-weight: bold; font-size: 1.2em;">O Super Professor está analisando a Palavra...</p>
+            <p class="dict-sub">Buscando conexões, contexto histórico e gerando exegese profunda. Aguarde ⏳</p>
         </div>`;
     modal.style.display = 'block';
 
-    const cacheKey = sanitizeKey(`${book}_${chapter}_${verseNum}`);
+    if (GROQ_API_KEY === "SUA_CHAVE_GROQ_AQUI" || GROQ_API_KEY === "") {
+        content.innerHTML = '<p class="error-msg">⚠️ Erro: Para acessar o Professor Teológico, insira sua chave da API da Groq no arquivo app.js.</p>';
+        return;
+    }
 
     try {
-        const cacheSnapshot = await get(child(ref(db), `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`));
+        const systemPrompt = `Você é um Doutor em Teologia, mestre em exegese bíblica, hebraico, grego e hermenêutica. 
+        Sua missão é dar um "up" nos detalhes, abrir a visão do aluno e motivá-lo a aprender cada vez mais a Bíblia.
+        Você deve fornecer uma análise rica, profunda e extremamente bem conectada.
+        Responda ESTRITAMENTE em código HTML puro para ser injetado no site. Use apenas as tags: <div>, <p>, <h3>, <ul>, <li>, <strong>, <em>, <br>. 
+        PROIBIDO o uso de marcação markdown como \`\`\`html. O texto deve fluir de maneira impactante, professoral e inspiradora.`;
+
+        const userPrompt = `Faça uma exegese teológica de altíssimo nível do versículo: ${book} ${chapter}:${verseNum} - "${verseText}".
         
-        if (cacheSnapshot.exists()) {
-            let cachedHTML = cacheSnapshot.val().html;
-            content.innerHTML = `<span style="font-size: 0.8em; color: #48bb78; border: 1px solid #48bb78; padding: 2px 6px; border-radius: 12px; margin-bottom: 15px; display: inline-block;">⚡ Carregamento Rápido (Cache)</span><br>` + cachedHTML;
-            currentAIText = `[ESTUDO EXAUSTIVO] ${book} ${chapter}:${verseNum}\n\n` + cachedHTML.replace(/<[^>]*>?/gm, ''); 
-            copyBtn.style.display = 'block';
-            return; 
-        }
-
-        if (GROQ_API_KEY === "SUA_CHAVE_GROQ_AQUI" || GROQ_API_KEY === "") {
-            content.innerHTML = '<p class="error-msg">⚠️ Insira sua chave da API da Groq no arquivo app.js.</p>'; return;
-        }
-
-        // PROMPT SUPREMO DE TEOLOGIA EXAUSTIVA
-        const systemPrompt = `Você é o maior Doutor em Teologia e Exegese Bíblica do mundo, mestre em hebraico, aramaico e grego. 
-        Sua missão é fornecer o estudo mais completo, exaustivo e profundo possível para cada versículo. O aluno precisa de uma rota de estudo completa, não apenas um resumo. 
-        Mapeie todas as conexões bíblicas possíveis (Antigo e Novo Testamento). 
-        Responda ESTRITAMENTE em código HTML puro (<div>, <p>, <h3>, <ul>, <li>, <strong>, <em>, <br>). PROIBIDO usar marcação markdown como \`\`\`html. O texto deve fluir de maneira impactante, professoral e incrivelmente densa. Não economize nas palavras.`;
-        
-        const userPrompt = `Faça uma exegese teológica EXAUSTIVA e incrivelmente aprofundada do versículo: ${book} ${chapter}:${verseNum} - "${verseText}".
-
         Siga OBRIGATORIAMENTE esta estrutura HTML:
+        <h3>🔗 Referências Cruzadas</h3>
+        <p>[Liste referências diretas de outros livros, como Gênesis, Apocalipse, Salmos, etc. Explique a conexão teológica entre eles, mostrando que a Bíblia é um livro unificado.]</p>
         
-        <h3>🔗 Referências Cruzadas (O Cânon Completo)</h3>
-        <p>[Mapeie exaustivamente as conexões deste versículo com o restante da Bíblia. Traga diversas referências de profecias, cumprimentos, paralelos temáticos e passagens de apoio de diferentes livros. Explique o porquê da conexão de cada uma. Crie uma rota de estudo completa.]</p>
+        <h3>📜 Contexto Histórico e Cultural</h3>
+        <p>[Explique detalhes como: o que estava acontecendo na época, costumes, geografia, política do momento, para que o aluno entenda o cenário original.]</p>
         
-        <h3>📜 Contexto Histórico, Geográfico e Cultural</h3>
-        <p>[Mergulhe fundo. Quem escreveu? Para quem? O que estava acontecendo na política, sociedade e geografia da época? Quais costumes explicam esse texto? Como era a mentalidade dos destinatários originais?]</p>
+        <h3>🧠 Exegese Profunda (Hebraico/Grego)</h3>
+        <p>[Desvende o significado teológico. Se houver palavras cruciais no texto original, explique seu peso e o que a tradução pode não ter captado totalmente.]</p>
         
-        <h3>🗣️ Análise Linguística Original (Hebraico/Grego)</h3>
-        <p>[Desvende as palavras originais mais importantes. Qual é a raiz morfológica? Como a palavra era usada naquela cultura? Mostre as nuances e riquezas que as traduções em português não conseguem capturar totalmente.]</p>
-        
-        <h3>🧠 Teologia Sistemática e Exegese Profunda</h3>
-        <p>[Qual é o peso doutrinário dessa passagem? Qual pilar da fé ela sustenta? Como isso se encaixa no plano perfeito e soberano de redenção de Deus ao longo dos séculos?]</p>
-        
-        <h3>🔥 Aplicação e Transformação</h3>
-        <p>[Conclua com uma reflexão poderosa, madura e transformadora, que desafie o aluno a viver as verdades que acabou de estudar na prática cristã contemporânea.]</p>`;
+        <h3>🔥 Aplicação e Reflexão</h3>
+        <p>[Encerre com uma reflexão poderosa e encorajadora baseada no texto, visando despertar a paixão do aluno pelo estudo da Palavra.]</p>`;
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-            body: JSON.stringify({ 
-                model: "llama-3.3-70b-versatile", 
-                messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], 
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile", // <-- O MODELO FOI ATUALIZADO AQUI
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt }
+                ],
                 temperature: 0.7,
-                max_tokens: 6000 // Aumentado para suportar estudos muito longos e exaustivos
+                max_tokens: 2000
             })
         });
 
         const data = await response.json();
         
-        if(data.error) {
-             content.innerHTML = `<p class="error-msg">Erro na API da Groq: ${data.error.message}</p>`; return;
+        if (data.error) {
+            content.innerHTML = `<p class="error-msg">Erro na API da Groq: ${data.error.message}</p>`;
+            return;
         }
 
-        let aiHTML = data.choices[0].message.content.replace(/```html/g, '').replace(/```/g, ''); 
+        let aiHTML = data.choices[0].message.content;
+        
+        // Limpeza de segurança caso a IA ainda retorne com formato markdown
+        aiHTML = aiHTML.replace(/```html/g, '').replace(/```/g, ''); 
         
         content.innerHTML = aiHTML;
-        currentAIText = `[ESTUDO EXAUSTIVO] ${book} ${chapter}:${verseNum}\n\n` + aiHTML.replace(/<[^>]*>?/gm, ''); 
+        
+        // Salva o texto processado globalmente (removendo tags HTML para caber limpo no textarea)
+        currentAIText = `ESTUDO TEOLÓGICO: ${book} ${chapter}:${verseNum}\n\n` + aiHTML.replace(/<[^>]*>?/gm, ''); 
         copyBtn.style.display = 'block';
-
-        // Salva na rota nova de cache exaustivo
-        await set(ref(db, `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`), {
-            html: aiHTML
-        });
-
+        
     } catch (error) {
-        content.innerHTML = '<p class="error-msg">Erro de conexão ao gerar o estudo teológico.</p>';
-        console.error(error);
+        console.error("Erro no Super Professor (Groq):", error);
+        content.innerHTML = '<p class="error-msg">Erro de conexão ao gerar o estudo teológico. Verifique a internet e tente novamente.</p>';
     }
 };
 
+// Adiciona anotação do Super Professor no textarea
 document.getElementById('btn-copy-ai-notes').addEventListener('click', () => {
     const studyNotes = document.getElementById('study-notes');
     if(studyNotes.value !== "") studyNotes.value += "\n\n----------------------\n\n";
     studyNotes.value += currentAIText;
     
+    // Feedback visual
     const copyBtn = document.getElementById('btn-copy-ai-notes');
     copyBtn.innerText = "✅ Salvo nas suas anotações!";
     copyBtn.style.background = "#48bb78";
@@ -500,286 +298,115 @@ document.getElementById('btn-copy-ai-notes').addEventListener('click', () => {
 window.closeAIModal = () => { document.getElementById('ai-professor-modal').style.display = 'none'; };
 
 // ==========================================
-// MÓDULO: AGENDA IA (GERADOR DE PLANO)
-// ==========================================
-document.getElementById('btn-generate-plan').addEventListener('click', async () => {
-    const days = document.getElementById('study-days-input').value;
-    const planDiv = document.getElementById('ai-plan-content');
-    
-    if(!days || days < 1 || days > 7) {
-        alert("Por favor, insira um número válido de dias (1 a 7).");
-        return;
-    }
-
-    planDiv.style.display = 'block';
-    planDiv.innerHTML = '<p class="placeholder-text" style="color:#ecc94b;">A IA está construindo seu cronograma teológico... Aguarde ⏳</p>';
-
-    try {
-        const systemPrompt = `Você é o Doutor Chefe de um seminário teológico. Crie um cronograma de estudo bíblico focado em Exegese, Hermenêutica, Análise linguística (hebraico/grego), Contexto histórico, Gênero literário, Contexto Canônico e Teologia Sistemática. Responda ESTRITAMENTE em código HTML puro (<h3>, <ul>, <li>, <strong>, <p>). SEM marcações markdown.`;
-        
-        const userPrompt = `Gere um plano de estudo denso e motivador para uma pessoa que vai estudar ${days} dias na semana. O plano deve estruturar o que ele vai fazer no Dia 1, Dia 2, etc., indicando quais dessas ferramentas teológicas ele usará em cada dia, sugerindo um livro bíblico inicial para aplicar o método.`;
-
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-            body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], temperature: 0.7 })
-        });
-
-        const data = await response.json();
-        let planHTML = data.choices[0].message.content.replace(/```html/g, '').replace(/```/g, ''); 
-        planDiv.innerHTML = planHTML;
-
-    } catch (error) {
-        planDiv.innerHTML = '<p class="error-msg">Erro ao gerar o plano. Tente novamente.</p>';
-    }
-});
-
-// ==========================================
-// MÓDULO: QUIZ (JOGO E ADMINISTRAÇÃO)
-// ==========================================
-document.getElementById('btn-start-quiz').addEventListener('click', async () => {
-    maxTimePerQuestion = parseInt(document.getElementById('quiz-time-range').value);
-    
-    const btn = document.getElementById('btn-start-quiz');
-    btn.innerText = "Buscando perguntas no banco...";
-    btn.disabled = true;
-
-    try {
-        const snapshot = await get(child(ref(db), `Biblia_Estudo/QuizBank`));
-        if (snapshot.exists()) {
-            const allQuestions = Object.values(snapshot.val());
-            quizQuestions = allQuestions.sort(() => 0.5 - Math.random());
-            
-            currentQuizIndex = 0;
-            quizHits = 0;
-            quizMisses = 0;
-            
-            document.getElementById('quiz-setup').style.display = 'none';
-            document.getElementById('quiz-active').style.display = 'block';
-            
-            loadQuizQuestion();
-        } else {
-            alert("Nenhuma pergunta encontrada no banco de dados. Fale com o Administrador.");
-        }
-    } catch (error) {
-        console.error(error);
-        alert("Erro ao buscar o quiz.");
-    } finally {
-        btn.innerText = "Iniciar Partida Aleatória";
-        btn.disabled = false;
-    }
-});
-
-function loadQuizQuestion() {
-    if (currentQuizIndex >= quizQuestions.length) {
-        endQuiz();
-        return;
-    }
-
-    const q = quizQuestions[currentQuizIndex];
-    document.getElementById('question-text').innerText = `${currentQuizIndex + 1}. ${q.pergunta}`;
-    document.getElementById('quiz-hits').innerText = quizHits;
-    document.getElementById('quiz-misses').innerText = quizMisses;
-    
-    const container = document.getElementById('options-container');
-    container.innerHTML = '';
-    
-    for (const [letra, texto] of Object.entries(q.opcoes)) {
-        const btn = document.createElement('button');
-        btn.className = 'quiz-opt-btn';
-        btn.innerText = `${letra}) ${texto}`;
-        btn.style.background = "#4a5568";
-        btn.style.textAlign = "left";
-        btn.onclick = () => handleQuizAnswer(letra, q.resposta_correta, btn);
-        container.appendChild(btn);
-    }
-
-    quizTimeLeft = maxTimePerQuestion;
-    document.getElementById('quiz-timer-text').innerText = `${quizTimeLeft}s`;
-    
-    clearInterval(quizTimerInterval);
-    quizTimerInterval = setInterval(() => {
-        quizTimeLeft--;
-        document.getElementById('quiz-timer-text').innerText = `${quizTimeLeft}s`;
-        
-        if (quizTimeLeft <= 0) {
-            clearInterval(quizTimerInterval);
-            handleQuizAnswer(null, q.resposta_correta, null); 
-        }
-    }, 1000);
-}
-
-function handleQuizAnswer(selectedLetter, correctLetter, btnElement) {
-    clearInterval(quizTimerInterval);
-    
-    const buttons = document.querySelectorAll('.quiz-opt-btn');
-    buttons.forEach(b => b.disabled = true); 
-
-    if (selectedLetter === correctLetter) {
-        if(btnElement) btnElement.style.background = "#48bb78"; 
-        quizHits++;
-    } else {
-        if(btnElement) btnElement.style.background = "#fc8181"; 
-        quizMisses++;
-        buttons.forEach(b => {
-            if(b.innerText.startsWith(correctLetter)) b.style.background = "#48bb78";
-        });
-    }
-
-    document.getElementById('quiz-hits').innerText = quizHits;
-    document.getElementById('quiz-misses').innerText = quizMisses;
-
-    setTimeout(() => {
-        currentQuizIndex++;
-        loadQuizQuestion();
-    }, 2000);
-}
-
-document.getElementById('btn-stop-quiz').addEventListener('click', () => {
-    endQuiz();
-});
-
-async function endQuiz() {
-    clearInterval(quizTimerInterval);
-    
-    const totalPontosPartida = quizHits * 10; 
-    if (currentUser && quizHits > 0) {
-        const userRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}`);
-        const snapshot = await get(userRef);
-        let pontosAtuais = snapshot.exists() ? snapshot.val().quizScore || 0 : 0;
-        update(userRef, { quizScore: pontosAtuais + totalPontosPartida });
-    }
-
-    alert(`Partida Encerrada!\nVocê acertou: ${quizHits}\nVocê errou: ${quizMisses}\nPontos ganhos: ${totalPontosPartida}`);
-    leaveQuiz();
-}
-
-window.leaveQuiz = () => {
-    clearInterval(quizTimerInterval);
-    document.getElementById('quiz-setup').style.display = 'block';
-    document.getElementById('quiz-active').style.display = 'none';
-    openScreen('dashboard-screen');
-    loadDashboard();
-};
-
-// ==========================================
-// LÓGICA DO ADMINISTRADOR (TXT E JSON)
-// ==========================================
-document.getElementById('btn-import-quiz').addEventListener('click', async () => {
-    const fileInput = document.getElementById('quiz-txt-input');
-    const statusText = document.getElementById('quiz-import-status');
-    
-    if (fileInput.files.length === 0) {
-        statusText.innerText = "❌ Selecione um arquivo .txt";
-        statusText.style.color = "#fc8181"; return;
-    }
-
-    statusText.style.color = "#a0aec0";
-    statusText.innerText = "Lendo arquivo de quiz... Aguarde.";
-
-    for (let file of fileInput.files) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const text = e.target.result;
-                const blocos = text.split(/Pergunta \d+:/).filter(b => b.trim() !== "");
-                let qtdImportada = 0;
-
-                for (let bloco of blocos) {
-                    const linhas = bloco.split('\n').map(l => l.trim()).filter(l => l !== "");
-                    if (linhas.length < 3) continue;
-
-                    const perguntaText = linhas[0];
-                    let opcoes = {};
-                    let resposta = "";
-
-                    for (let i = 1; i < linhas.length; i++) {
-                        const linha = linhas[i];
-                        if (linha.match(/^[a-e]\)/)) {
-                            const letra = linha.substring(0, 1);
-                            const textoOpcao = linha.substring(2).trim();
-                            opcoes[letra] = textoOpcao;
-                        } else if (linha.startsWith("Resposta:")) {
-                            const match = linha.match(/Resposta:\s*([a-e])\)/i);
-                            if (match) resposta = match[1].toLowerCase();
-                        }
-                    }
-
-                    if (perguntaText && Object.keys(opcoes).length > 0 && resposta) {
-                        const newQRef = push(ref(db, `Biblia_Estudo/QuizBank`));
-                        await set(newQRef, {
-                            pergunta: perguntaText,
-                            opcoes: opcoes,
-                            resposta_correta: resposta
-                        });
-                        qtdImportada++;
-                    }
-                }
-                statusText.style.color = "#48bb78";
-                statusText.innerText = `✅ Arquivo ${file.name} processado! ${qtdImportada} perguntas injetadas no banco de forma aleatória.`;
-            } catch (error) {
-                console.error(error);
-                statusText.style.color = "#fc8181";
-                statusText.innerText = "❌ Erro ao ler o arquivo TXT.";
-            }
-        };
-        reader.readAsText(file);
-    }
-});
-
-document.getElementById('btn-import-json').addEventListener('click', async () => {
-    const fileInput = document.getElementById('json-file-input');
-    const versionSelect = document.getElementById('admin-import-version').value;
-    const statusText = document.getElementById('import-status');
-    
-    if (fileInput.files.length === 0) return;
-    statusText.innerText = "Processando matriz... Aguarde.";
-
-    for (let file of fileInput.files) {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const jsonData = JSON.parse(e.target.result);
-                let updates = {};
-                jsonData.forEach(livro => {
-                    livro.chapters.forEach((capitulo, capIndex) => {
-                        capitulo.forEach((textoVersiculo, verIndex) => {
-                            updates[`Biblia_Estudo/Textos/${livro.name}/${capIndex + 1}/${verIndex + 1}/${versionSelect}`] = textoVersiculo;
-                        });
-                    });
-                });
-                await update(ref(db), updates);
-                statusText.innerText = `✅ Importado com sucesso na versão [${versionSelect.toUpperCase()}]!`;
-            } catch (error) {
-                statusText.innerText = `❌ Erro no processamento.`;
-            }
-        };
-        reader.readAsText(file);
-    }
-});
-
-// ==========================================
-// LÓGICA DO DICIONÁRIO E MODAIS GERAIS
+// LÓGICA DO DICIONÁRIO E MODAIS
 // ==========================================
 window.openDictionary = async (strongId) => {
     try {
-        const snapshot = await get(child(ref(db), `Biblia_Estudo/Dicionario_Strongs/${strongId}`));
+        const dbRef = ref(db);
+        const snapshot = await get(child(dbRef, `Biblia_Estudo/Dicionario_Strongs/${strongId}`));
+        
         const modal = document.getElementById('dict-modal');
+        const title = document.getElementById('dict-title');
+        const pron = document.getElementById('dict-pronunciation');
+        const def = document.getElementById('dict-def');
+
         if (snapshot.exists()) {
             const data = snapshot.val();
-            document.getElementById('dict-title').innerText = `${data.palavra} (${data.idioma})`;
-            document.getElementById('dict-pronunciation').innerText = `Pronúncia: ${data.pronuncia}`;
-            document.getElementById('dict-def').innerText = data.definicao;
+            title.innerText = `${data.palavra} (${data.idioma})`;
+            pron.innerText = `Pronúncia: ${data.pronuncia}`;
+            def.innerText = data.definicao;
+        } else {
+            title.innerText = "Código " + strongId;
+            pron.innerText = "";
+            def.innerText = "Definição ainda não importada no banco de dados.";
         }
+        
         modal.style.display = 'block';
     } catch (error) { console.error(error); }
 };
 
 window.closeDictionary = () => { document.getElementById('dict-modal').style.display = 'none'; };
 
+// Fecha modais ao clicar fora ou no X
 window.onclick = (event) => { 
     if (event.target === document.getElementById('dict-modal')) closeDictionary(); 
     if (event.target === document.getElementById('ai-professor-modal')) closeAIModal(); 
 };
+
+
+// ==========================================
+// LÓGICA DO PAINEL DO ADMINISTRADOR
+// ==========================================
+document.getElementById('btn-import-json').addEventListener('click', async () => {
+    const fileInput = document.getElementById('json-file-input');
+    const versionSelect = document.getElementById('admin-import-version').value;
+    const statusText = document.getElementById('import-status');
+    
+    if (fileInput.files.length === 0) {
+        statusText.innerText = "❌ Selecione pelo menos um arquivo JSON.";
+        statusText.style.color = "#fc8181";
+        return;
+    }
+
+    statusText.style.color = "#a0aec0";
+    statusText.innerText = "Lendo e processando a matriz do arquivo... Aguarde.";
+
+    for (let file of fileInput.files) {
+        const reader = new FileReader();
+        
+        reader.onload = async (e) => {
+            try {
+                statusText.innerText = `Montando estrutura de nós para: ${file.name}...`;
+                const jsonData = JSON.parse(e.target.result);
+                
+                let updates = {};
+                
+                jsonData.forEach(livro => {
+                    const nomeLivro = livro.name; 
+                    
+                    livro.chapters.forEach((capitulo, capIndex) => {
+                        const numCapitulo = capIndex + 1;
+                        
+                        capitulo.forEach((textoVersiculo, verIndex) => {
+                            const numVersiculo = verIndex + 1;
+                            const caminhoFirebase = `Biblia_Estudo/Textos/${nomeLivro}/${numCapitulo}/${numVersiculo}/${versionSelect}`;
+                            updates[caminhoFirebase] = textoVersiculo;
+                        });
+                    });
+                });
+                
+                await update(ref(db), updates);
+                
+                statusText.style.color = "#48bb78";
+                statusText.innerText = `✅ Arquivo importado com sucesso na versão [${versionSelect.toUpperCase()}]! As versões foram atualizadas em tempo real.`;
+            } catch (error) {
+                console.error("Erro na conversão do JSON:", error);
+                statusText.style.color = "#fc8181";
+                statusText.innerText = `❌ Erro no processamento de ${file.name}. Verifique se é o JSON correto.`;
+            }
+        };
+        
+        reader.readAsText(file);
+    }
+});
+
+document.getElementById('btn-delete-book').addEventListener('click', async () => {
+    const bookToDelete = document.getElementById('admin-delete-book').value;
+    const statusText = document.getElementById('delete-status');
+
+    const confirmar = confirm(`ATENÇÃO ADMINISTRADOR!\nTem certeza que deseja APAGAR todas as traduções do livro de ${bookToDelete} do banco de dados?`);
+    
+    if (confirmar) {
+        try {
+            await remove(ref(db, `Biblia_Estudo/Textos/${bookToDelete}`));
+            statusText.style.color = "#48bb78";
+            statusText.innerText = `✅ Livro de ${bookToDelete} apagado com sucesso.`;
+        } catch (error) {
+            statusText.style.color = "#fc8181";
+            statusText.innerText = "❌ Erro ao apagar o livro.";
+            console.error(error);
+        }
+    }
+});
 
 initBibleNavigation();
