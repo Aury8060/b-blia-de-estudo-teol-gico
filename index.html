@@ -201,10 +201,24 @@
                 <h3 style="color: #63b3ed; margin-bottom: 10px;">📥 Importar Banco de Dados Bíblia (JSON)</h3>
                 <p class="dict-sub" style="margin-bottom: 15px;">1. Selecione a versão da tradução. 2. Selecione o arquivo JSON estruturado em Array.</p>
                 <select id="admin-import-version" style="margin-bottom: 10px; background: #1a202c;">
-                    <option value="acf">ACF</option>
-                    <option value="vfl">VFL</option>
-                    <option value="ara">ARA</option>
-                    <option value="nvi">NVI</option>
+                    <option value="acf">ACF (Almeida Corrigida Fiel)</option>
+                    <option value="ara">ARA (Almeida Revista e Atualizada)</option>
+                    <option value="arco">ARCO (Almeida Revista e Corrigida)</option>
+                    <option value="as21">AS21 (Almeida Século 21)</option>
+                    <option value="jfaa">JFAA (Almeida Atualizada)</option>
+                    <option value="kja">KJA (King James Atualizada)</option>
+                    <option value="kjf">KJF (King James Fiel)</option>
+                    <option value="naa">NAA (Nova Almeida Atualizada)</option>
+                    <option value="nbv">NBV (Nova Bíblia Viva)</option>
+                    <option value="ntlh">NTLH (Nova Tradução na Linguagem de Hoje)</option>
+                    <option value="nvi">NVI (Nova Versão Internacional)</option>
+                    <option value="nvt">NVT (Nova Versão Transformadora)</option>
+                    <option value="tb">TB (Tradução Brasileira)</option>
+                    <option value="blivre">BLIVRE (Bíblia Livre)</option>
+                    <option value="alm1911">ALM1911 (Almeida 1911)</option>
+                    <option value="ol">OL (O Livro)</option>
+                    <option value="msg">A Mensagem</option>
+                    <option value="vfl">VFL (Versão Fácil de Ler)</option>
                 </select>
                 <input type="file" id="json-file-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
                 <button id="btn-import-json" style="background: #48bb78;">Processar e Salvar no Firebase</button>
