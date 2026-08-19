@@ -225,9 +225,18 @@
                 <p id="import-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
 
+            <!-- Importar ESTUDO EXAUSTIVO (CACHE IA) -->
+            <div class="card" style="text-align: left; margin-bottom: 20px;">
+                <h3 style="color: #9f7aea; margin-bottom: 10px;">🧠 Importar Estudo Exaustivo (Cache IA)</h3>
+                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do seu JSON contendo os estudos pré-gerados (ex: Gênesis_1_1 ou 1_João_1_1).</p>
+                <input type="file" id="ai-cache-json-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
+                <button id="btn-import-ai-cache" style="background: #9f7aea; margin-top: 10px;">Processar e Injetar no Cache</button>
+                <p id="import-ai-cache-status" class="placeholder-text" style="margin-top: 10px;"></p>
+            </div>
+
             <div class="card" style="text-align: left;">
                 <h3 style="color: #fc8181; margin-bottom: 10px;">🗑️ Gerenciar Dados (Apagar Livro)</h3>
-                <select id="admin-delete-book"></select>
+                <select id="admin-delete-book" style="margin-bottom: 10px; background: #1a202c;"></select>
                 <button id="btn-delete-book" style="background: #e53e3e;">Apagar Livro Selecionado</button>
                 <p id="delete-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>

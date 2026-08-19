@@ -406,7 +406,10 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
         </div>`;
     modal.style.display = 'block';
 
-    const cacheKey = sanitizeKey(`${book}_${chapter}_${verseNum}`);
+    // AQUI ESTÁ A CORREÇÃO MÁGICA:
+    // Pega o nome do livro e substitui todos os espaços por underline (_). 
+    // Assim, "1 João" vira "1_João" e o código encontra certinho no Firebase!
+    const cacheKey = sanitizeKey(`${book.replace(/\s+/g, '_')}_${chapter}_${verseNum}`);
 
     try {
         const cacheSnapshot = await get(child(ref(db), `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`));
@@ -752,6 +755,45 @@ document.getElementById('btn-import-json').addEventListener('click', async () =>
                 statusText.innerText = `✅ Importado com sucesso na versão [${versionSelect.toUpperCase()}]!`;
             } catch (error) {
                 statusText.innerText = `❌ Erro no processamento.`;
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+// NOVO: Importar Estudo Exaustivo Pré-Gerado (Cache IA em JSON)
+document.getElementById('btn-import-ai-cache').addEventListener('click', async () => {
+    const fileInput = document.getElementById('ai-cache-json-input');
+    const statusText = document.getElementById('import-ai-cache-status');
+    
+    if (fileInput.files.length === 0) {
+        statusText.innerText = "❌ Selecione um arquivo .json com os estudos.";
+        statusText.style.color = "#fc8181"; 
+        return;
+    }
+
+    statusText.style.color = "#a0aec0";
+    statusText.innerText = "Lendo e injetando no Cache da IA... Aguarde.";
+
+    for (let file of fileInput.files) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const jsonData = JSON.parse(e.target.result);
+                let updates = {};
+                
+                for (const [key, value] of Object.entries(jsonData)) {
+                    updates[`Biblia_Estudo/AI_Cache_Exaustivo/${key}`] = value;
+                }
+
+                await update(ref(db), updates);
+                
+                statusText.style.color = "#48bb78";
+                statusText.innerText = `✅ Cache importado com sucesso!`;
+            } catch (error) {
+                console.error("Erro na importação do Cache:", error);
+                statusText.style.color = "#fc8181";
+                statusText.innerText = `❌ Erro no processamento. Verifique se o formato do JSON está correto.`;
             }
         };
         reader.readAsText(file);
