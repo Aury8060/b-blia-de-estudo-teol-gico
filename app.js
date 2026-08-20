@@ -273,9 +273,23 @@ window.leaveStudy = async () => {
         let tempoAtual = snapshot.exists() ? snapshot.val().tempoEstudo || 0 : 0;
         update(userRef, { tempoEstudo: tempoAtual + secondsStudied });
     }
+    
+    // Reseta os botões de controle para sempre aparecerem quando voltar ao painel
+    document.getElementById('controls-wrapper').style.display = 'flex';
+    document.getElementById('btn-toggle-controls').style.display = 'none';
+    
+    // Reseta o título da leitura estruturada
+    document.getElementById('current-reading-title').innerHTML = `Leitura Estruturada <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span>`;
+    
     openScreen('dashboard-screen');
     loadDashboard();
 };
+
+// Lógica do novo botão de Toggle (Expandir / Ocultar controles)
+document.getElementById('btn-toggle-controls').addEventListener('click', () => {
+    document.getElementById('controls-wrapper').style.display = 'flex';
+    document.getElementById('btn-toggle-controls').style.display = 'none';
+});
 
 document.getElementById('btn-load-text').addEventListener('click', async () => {
     const book = document.getElementById('bible-book').value;
@@ -316,11 +330,54 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
                 }
             }
             readerDiv.innerHTML = htmlContent;
+            
+            // Sucesso! Oculta a caixa de controles e mostra o botão "Mudar Livro"
+            document.getElementById('controls-wrapper').style.display = 'none';
+            document.getElementById('btn-toggle-controls').style.display = 'block';
+
+            // AQUI ESTÁ A ATUALIZAÇÃO DO TÍTULO DINÂMICO DO LIVRO E CAPÍTULO!
+            document.getElementById('current-reading-title').innerHTML = `${book} - Capítulo ${chapter} <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span>`;
+
         } else {
             readerDiv.innerHTML = '<p class="placeholder-text error-msg">O texto deste capítulo ainda não foi importado.</p>';
         }
     } catch (error) {
         console.error("Erro ao buscar:", error);
+    }
+});
+
+// Botões de Paginação (Próximo e Anterior)
+document.getElementById('btn-next-chapter').addEventListener('click', () => {
+    const bookSelect = document.getElementById('bible-book');
+    const chapterSelect = document.getElementById('bible-chapter');
+
+    if (chapterSelect.selectedIndex < chapterSelect.options.length - 1) {
+        chapterSelect.selectedIndex++;
+        document.getElementById('btn-load-text').click();
+    } else if (bookSelect.selectedIndex < bookSelect.options.length - 1) {
+        // Pula pro próximo livro e vai pro capítulo 1
+        bookSelect.selectedIndex++;
+        setTimeout(() => {
+            chapterSelect.selectedIndex = 0;
+            document.getElementById('btn-load-text').click();
+        }, 100);
+    }
+});
+
+document.getElementById('btn-prev-chapter').addEventListener('click', () => {
+    const bookSelect = document.getElementById('bible-book');
+    const chapterSelect = document.getElementById('bible-chapter');
+
+    if (chapterSelect.selectedIndex > 0) {
+        chapterSelect.selectedIndex--;
+        document.getElementById('btn-load-text').click();
+    } else if (bookSelect.selectedIndex > 0) {
+        // Volta pro livro anterior, no último capítulo
+        bookSelect.selectedIndex--;
+        setTimeout(() => {
+            chapterSelect.selectedIndex = chapterSelect.options.length - 1;
+            document.getElementById('btn-load-text').click();
+        }, 100);
     }
 });
 
@@ -406,9 +463,6 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
         </div>`;
     modal.style.display = 'block';
 
-    // AQUI ESTÁ A CORREÇÃO MÁGICA:
-    // Pega o nome do livro e substitui todos os espaços por underline (_). 
-    // Assim, "1 João" vira "1_João" e o código encontra certinho no Firebase!
     const cacheKey = sanitizeKey(`${book.replace(/\s+/g, '_')}_${chapter}_${verseNum}`);
 
     try {
@@ -423,33 +477,11 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
         }
 
         if (GROQ_API_KEY === "SUA_CHAVE_GROQ_AQUI" || GROQ_API_KEY === "") {
-            content.innerHTML = '<p class="error-msg">⚠️ Insira sua chave da API da Groq no arquivo app.js.</p>'; return;
+            content.innerHTML = '<p class="error-msg">⚠️ Estudo ainda não importado no banco e API da IA desativada.</p>'; return;
         }
 
-        // PROMPT SUPREMO DE TEOLOGIA EXAUSTIVA
-        const systemPrompt = `Você é o maior Doutor em Teologia e Exegese Bíblica do mundo, mestre em hebraico, aramaico e grego. 
-        Sua missão é fornecer o estudo mais completo, exaustivo e profundo possível para cada versículo. O aluno precisa de uma rota de estudo completa, não apenas um resumo. 
-        Mapeie todas as conexões bíblicas possíveis (Antigo e Novo Testamento). 
-        Responda ESTRITAMENTE em código HTML puro (<div>, <p>, <h3>, <ul>, <li>, <strong>, <em>, <br>). PROIBIDO usar marcação markdown como \`\`\`html. O texto deve fluir de maneira impactante, professoral e incrivelmente densa. Não economize nas palavras.`;
-        
-        const userPrompt = `Faça uma exegese teológica EXAUSTIVA e incrivelmente aprofundada do versículo: ${book} ${chapter}:${verseNum} - "${verseText}".
-
-        Siga OBRIGATORIAMENTE esta estrutura HTML:
-        
-        <h3>🔗 Referências Cruzadas (O Cânon Completo)</h3>
-        <p>[Mapeie exaustivamente as conexões deste versículo com o restante da Bíblia. Traga diversas referências de profecias, cumprimentos, paralelos temáticos e passagens de apoio de diferentes livros. Explique o porquê da conexão de cada uma. Crie uma rota de estudo completa.]</p>
-        
-        <h3>📜 Contexto Histórico, Geográfico e Cultural</h3>
-        <p>[Mergulhe fundo. Quem escreveu? Para quem? O que estava acontecendo na política, sociedade e geografia da época? Quais costumes explicam esse texto? Como era a mentalidade dos destinatários originais?]</p>
-        
-        <h3>🗣️ Análise Linguística Original (Hebraico/Grego)</h3>
-        <p>[Desvende as palavras originais mais importantes. Qual é a raiz morfológica? Como a palavra era usada naquela cultura? Mostre as nuances e riquezas que as traduções em português não conseguem capturar totalmente.]</p>
-        
-        <h3>🧠 Teologia Sistemática e Exegese Profunda</h3>
-        <p>[Qual é o peso doutrinário dessa passagem? Qual pilar da fé ela sustenta? Como isso se encaixa no plano perfeito e soberano de redenção de Deus ao longo dos séculos?]</p>
-        
-        <h3>🔥 Aplicação e Transformação</h3>
-        <p>[Conclua com uma reflexão poderosa, madura e transformadora, que desafie o aluno a viver as verdades que acabou de estudar na prática cristã contemporânea.]</p>`;
+        const systemPrompt = `Você é o maior Doutor em Teologia e Exegese Bíblica do mundo, mestre em hebraico, aramaico e grego. Sua missão é fornecer o estudo mais completo, exaustivo e profundo possível para cada versículo. Responda ESTRITAMENTE em código HTML puro. SEM marcações markdown.`;
+        const userPrompt = `Faça uma exegese teológica EXAUSTIVA de: ${book} ${chapter}:${verseNum} - "${verseText}".`;
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -458,30 +490,21 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
                 model: "llama-3.3-70b-versatile", 
                 messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], 
                 temperature: 0.7,
-                max_tokens: 6000 // Aumentado para suportar estudos muito longos e exaustivos
+                max_tokens: 6000 
             })
         });
 
         const data = await response.json();
-        
-        if(data.error) {
-             content.innerHTML = `<p class="error-msg">Erro na API da Groq: ${data.error.message}</p>`; return;
-        }
+        if(data.error) { content.innerHTML = `<p class="error-msg">Erro na API: ${data.error.message}</p>`; return; }
 
         let aiHTML = data.choices[0].message.content.replace(/```html/g, '').replace(/```/g, ''); 
-        
         content.innerHTML = aiHTML;
         currentAIText = `[ESTUDO EXAUSTIVO] ${book} ${chapter}:${verseNum}\n\n` + aiHTML.replace(/<[^>]*>?/gm, ''); 
         copyBtn.style.display = 'block';
 
-        // Salva na rota nova de cache exaustivo
-        await set(ref(db, `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`), {
-            html: aiHTML
-        });
-
+        await set(ref(db, `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`), { html: aiHTML });
     } catch (error) {
-        content.innerHTML = '<p class="error-msg">Erro de conexão ao gerar o estudo teológico.</p>';
-        console.error(error);
+        content.innerHTML = '<p class="error-msg">Erro ao conectar ao servidor.</p>';
     }
 };
 
@@ -503,7 +526,7 @@ document.getElementById('btn-copy-ai-notes').addEventListener('click', () => {
 window.closeAIModal = () => { document.getElementById('ai-professor-modal').style.display = 'none'; };
 
 // ==========================================
-// MÓDULO: AGENDA IA (GERADOR DE PLANO)
+// MÓDULO: AGENDA IA (AGORA VIA BANCO DE DADOS OFFLINE)
 // ==========================================
 document.getElementById('btn-generate-plan').addEventListener('click', async () => {
     const days = document.getElementById('study-days-input').value;
@@ -515,25 +538,19 @@ document.getElementById('btn-generate-plan').addEventListener('click', async () 
     }
 
     planDiv.style.display = 'block';
-    planDiv.innerHTML = '<p class="placeholder-text" style="color:#ecc94b;">A IA está construindo seu cronograma teológico... Aguarde ⏳</p>';
+    planDiv.innerHTML = '<p class="placeholder-text" style="color:#ecc94b;">Buscando cronograma no banco de dados... ⏳</p>';
 
     try {
-        const systemPrompt = `Você é o Doutor Chefe de um seminário teológico. Crie um cronograma de estudo bíblico focado em Exegese, Hermenêutica, Análise linguística (hebraico/grego), Contexto histórico, Gênero literário, Contexto Canônico e Teologia Sistemática. Responda ESTRITAMENTE em código HTML puro (<h3>, <ul>, <li>, <strong>, <p>). SEM marcações markdown.`;
+        const planKey = `Plano_${days}`;
+        const snapshot = await get(child(ref(db), `Biblia_Estudo/Planos_Estudo/${planKey}`));
         
-        const userPrompt = `Gere um plano de estudo denso e motivador para uma pessoa que vai estudar ${days} dias na semana. O plano deve estruturar o que ele vai fazer no Dia 1, Dia 2, etc., indicando quais dessas ferramentas teológicas ele usará em cada dia, sugerindo um livro bíblico inicial para aplicar o método.`;
-
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-            body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }], temperature: 0.7 })
-        });
-
-        const data = await response.json();
-        let planHTML = data.choices[0].message.content.replace(/```html/g, '').replace(/```/g, ''); 
-        planDiv.innerHTML = planHTML;
-
+        if (snapshot.exists()) {
+            planDiv.innerHTML = snapshot.val().html;
+        } else {
+            planDiv.innerHTML = `<p class="error-msg">⚠️ O administrador ainda não importou o plano de estudo para ${days} dias.</p>`;
+        }
     } catch (error) {
-        planDiv.innerHTML = '<p class="error-msg">Erro ao gerar o plano. Tente novamente.</p>';
+        planDiv.innerHTML = '<p class="error-msg">Erro ao buscar o plano. Verifique sua conexão.</p>';
     }
 });
 
@@ -761,7 +778,6 @@ document.getElementById('btn-import-json').addEventListener('click', async () =>
     }
 });
 
-// NOVO: Importar Estudo Exaustivo Pré-Gerado (Cache IA em JSON)
 document.getElementById('btn-import-ai-cache').addEventListener('click', async () => {
     const fileInput = document.getElementById('ai-cache-json-input');
     const statusText = document.getElementById('import-ai-cache-status');
@@ -794,6 +810,45 @@ document.getElementById('btn-import-ai-cache').addEventListener('click', async (
                 console.error("Erro na importação do Cache:", error);
                 statusText.style.color = "#fc8181";
                 statusText.innerText = `❌ Erro no processamento. Verifique se o formato do JSON está correto.`;
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+// Importar Planos de Estudo JSON
+document.getElementById('btn-import-plans').addEventListener('click', async () => {
+    const fileInput = document.getElementById('plans-json-input');
+    const statusText = document.getElementById('import-plans-status');
+    
+    if (fileInput.files.length === 0) {
+        statusText.innerText = "❌ Selecione um arquivo .json com os planos.";
+        statusText.style.color = "#fc8181"; 
+        return;
+    }
+
+    statusText.style.color = "#a0aec0";
+    statusText.innerText = "Importando Planos de Estudo... Aguarde.";
+
+    for (let file of fileInput.files) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const jsonData = JSON.parse(e.target.result);
+                let updates = {};
+                
+                for (const [key, value] of Object.entries(jsonData)) {
+                    updates[`Biblia_Estudo/Planos_Estudo/${key}`] = value;
+                }
+
+                await update(ref(db), updates);
+                
+                statusText.style.color = "#48bb78";
+                statusText.innerText = `✅ Planos de estudo importados com sucesso no banco!`;
+            } catch (error) {
+                console.error("Erro:", error);
+                statusText.style.color = "#fc8181";
+                statusText.innerText = `❌ Erro no processamento. Verifique o JSON.`;
             }
         };
         reader.readAsText(file);

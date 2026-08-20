@@ -58,7 +58,7 @@
                 🧠 Quiz Teológico
             </button>
             <button class="menu-btn" onclick="openScreen('agenda-screen')">
-                📅 Agenda de Leitura (IA)
+                📅 Agenda de Leitura
             </button>
             <button class="menu-btn" id="admin-panel-btn" style="display: none;" onclick="openScreen('admin-screen')">
                 ⚙️ Painel Admin (Criador)
@@ -75,7 +75,12 @@
         </header>
         
         <div class="study-content">
-            <div class="study-controls">
+            
+            <!-- Botão para reexibir os controles após ocultá-los -->
+            <button id="btn-toggle-controls">🔍 Trocar Livro, Capítulo ou Tradução</button>
+
+            <!-- Controles agrupados para podermos ocultar/mostrar -->
+            <div class="study-controls" id="controls-wrapper">
                 <select id="bible-book"></select>
                 <select id="bible-chapter"></select>
                 <select id="bible-version">
@@ -103,9 +108,16 @@
             </div>
             
             <div class="levels">
-                <h3>Leitura Estruturada <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span></h3>
+                <!-- AQUI ESTÁ A CORREÇÃO: ADICIONAMOS O ID current-reading-title -->
+                <h3 id="current-reading-title">Leitura Estruturada <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span></h3>
+                
                 <div class="bible-reader" id="bible-reader">
                     <p class="placeholder-text">Selecione um livro, capítulo e versão acima para iniciar o estudo profundo.</p>
+                </div>
+
+                <div class="chapter-nav">
+                    <button id="btn-prev-chapter">⬅ Cap. Anterior</button>
+                    <button id="btn-next-chapter">Próximo Cap. ➡</button>
                 </div>
             </div>
             
@@ -134,12 +146,12 @@
         </header>
         <div class="study-content">
             <div class="card" style="text-align: left;">
-                <h3 style="color: #ecc94b;">🤖 Gerador de Plano Teológico</h3>
+                <h3 style="color: #ecc94b;">📅 Gerador de Plano Teológico</h3>
                 <p class="dict-sub">Quantos dias na semana você deseja estudar a Bíblia?</p>
                 <input type="number" id="study-days-input" placeholder="Ex: 3" min="1" max="7" style="margin-bottom: 10px;">
                 <button id="btn-generate-plan" style="background: #3182ce;">Gerar Plano de Estudo</button>
             </div>
-            <div id="ai-plan-content" class="bible-reader" style="display:none; background: #1a202c; border-left: 4px solid #ecc94b;">
+            <div id="ai-plan-content" class="bible-reader" style="display:none; text-align: left;">
                 <!-- O plano gerado aparecerá aqui -->
             </div>
         </div>
@@ -228,10 +240,19 @@
             <!-- Importar ESTUDO EXAUSTIVO (CACHE IA) -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
                 <h3 style="color: #9f7aea; margin-bottom: 10px;">🧠 Importar Estudo Exaustivo (Cache IA)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do seu JSON contendo os estudos pré-gerados (ex: Gênesis_1_1 ou 1_João_1_1).</p>
+                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do seu JSON contendo os estudos pré-gerados (ex: Gênesis_1_1).</p>
                 <input type="file" id="ai-cache-json-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
                 <button id="btn-import-ai-cache" style="background: #9f7aea; margin-top: 10px;">Processar e Injetar no Cache</button>
                 <p id="import-ai-cache-status" class="placeholder-text" style="margin-top: 10px;"></p>
+            </div>
+
+            <!-- Importar PLANOS DE ESTUDO -->
+            <div class="card" style="text-align: left; margin-bottom: 20px;">
+                <h3 style="color: #ed8936; margin-bottom: 10px;">📅 Importar Planos de Estudo (JSON)</h3>
+                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do JSON contendo os planos (Plano_1, Plano_2...)</p>
+                <input type="file" id="plans-json-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
+                <button id="btn-import-plans" style="background: #ed8936; margin-top: 10px;">Processar e Salvar Planos</button>
+                <p id="import-plans-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
 
             <div class="card" style="text-align: left;">
@@ -254,7 +275,7 @@
         </div>
     </div>
 
-    <!-- MODAL DO SUPER PROFESSOR TEOLÓGICO (GROQ API) -->
+    <!-- MODAL DO SUPER PROFESSOR TEOLÓGICO -->
     <div id="ai-professor-modal" class="modal">
         <div class="modal-content ai-modal-content">
             <span class="close-btn" onclick="closeAIModal()">&times;</span>

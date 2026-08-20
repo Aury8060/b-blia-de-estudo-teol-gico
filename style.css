@@ -41,16 +41,25 @@ header button { width: auto; padding: 8px 16px; margin: 0; background: #4a5568; 
 .study-controls button { margin: 0; margin-top: 5px; background: #48bb78; }
 .study-controls button:hover { background: #38a169; }
 
-/* Leitor da Bíblia e Agenda IA */
-.bible-reader { background: #1a202c; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #63b3ed; max-height: 50vh; overflow-y: auto; line-height: 1.6; font-size: 1.1em; }
+/* Botão de Toggle (Minimizar/Expandir Controles) */
+#btn-toggle-controls { background: #4a5568; margin-bottom: 15px; font-size: 1em; display: none; }
+#btn-toggle-controls:hover { background: #2d3748; border: 1px solid #63b3ed; }
+
+/* Leitor da Bíblia (Formato Organizado em Blocos) */
+.bible-reader { background: #1a202c; padding: 20px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #63b3ed; max-height: 55vh; overflow-y: auto; line-height: 1.6; font-size: 1.1em; }
 .bible-reader p { margin-bottom: 15px; }
 .bible-reader strong { color: #63b3ed; margin-right: 5px; }
 .placeholder-text { color: #a0aec0; text-align: center; font-style: italic; font-size: 0.95em; }
 
 /* Interação dos Versículos para o Super Professor */
-.verse-text { padding: 8px 10px; margin-bottom: 10px; border-radius: 6px; border-left: 3px solid transparent; transition: all 0.2s ease; cursor: pointer; }
+.verse-text { padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; border-left: 3px solid transparent; transition: all 0.2s ease; cursor: pointer; display: block; }
 .verse-text:hover { background-color: #2d3748; border-left: 3px solid #ecc94b; }
 .v-text-content { display: inline; }
+
+/* Botões de Paginação */
+.chapter-nav { display: flex; justify-content: space-between; margin-top: 10px; margin-bottom: 20px; }
+.chapter-nav button { width: auto; padding: 8px 15px; background: #4a5568; font-size: 0.9em; margin: 0; }
+.chapter-nav button:hover { background: #3182ce; }
 
 .strong-link { color: #ecc94b; cursor: pointer; font-size: 0.8em; vertical-align: super; text-decoration: underline; background: rgba(236, 201, 75, 0.1); padding: 2px 4px; border-radius: 4px; }
 .strong-link:hover { color: #d69e2e; background: rgba(236, 201, 75, 0.2); }
