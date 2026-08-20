@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bíblia Estudo Profundo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
@@ -23,17 +23,20 @@
         </div>
     </div>
 
-    <!-- TELA HOME / PERFIL (Antigo Dashboard) -->
+    <!-- TELA HOME / PERFIL -->
     <div id="dashboard-screen" class="screen">
-        <header>
+        <!-- NOVO: Header com Botão Sair Discreto -->
+        <header style="border-bottom: none; padding-bottom: 0;">
             <div class="user-info">
                 <img id="profile-pic" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Perfil">
-                <div>
-                    <h2 id="user-name">Usuário</h2>
-                    <span id="user-role" class="badge">Aluno</span>
+                <div class="user-details">
+                    <h2 id="user-name" style="font-size: 1.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333;">Usuário</h2>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                        <span id="user-role" class="badge">Aluno</span>
+                        <button id="btn-logout" class="btn-logout-discreet">Sair</button>
+                    </div>
                 </div>
             </div>
-            <button id="btn-logout" style="background:#e53e3e; color:white;">Sair</button>
         </header>
 
         <div class="stats-cards">
@@ -53,18 +56,16 @@
         </div>
     </div>
 
-    <!-- TELA DE ESTUDO (Aparência do Print) -->
+    <!-- TELA DE ESTUDO -->
     <div id="study-screen" class="screen">
-        <!-- Novo Header Estilizado -->
         <header class="study-header">
             <button onclick="leaveStudy()">↶</button>
             <button id="header-book-btn">Selecionar Livro</button>
             <span id="session-timer">00:00</span>
         </header>
         
-        <div class="study-content" style="background: transparent; box-shadow: none; padding: 0;">
+        <div class="study-content">
             
-            <!-- Controles agrupados (Ocultam ao carregar) -->
             <div class="study-controls" id="controls-wrapper">
                 <select id="bible-book"></select>
                 <select id="bible-chapter"></select>
@@ -93,6 +94,7 @@
             </div>
             
             <div class="levels">
+                <!-- Caixa onde o texto será inserido e rolará -->
                 <div class="bible-reader" id="bible-reader">
                     <p class="placeholder-text">Clique no botão do topo para selecionar um livro e iniciar o estudo.</p>
                 </div>
@@ -102,10 +104,10 @@
                 <button id="btn-next-chapter" class="nav-circle">›</button>
             </div>
             
-            <div id="notes-area-wrapper" style="display: none; margin-top: 20px;">
+            <div id="notes-area-wrapper" style="display: none;">
                 <textarea id="study-notes" placeholder="Faça suas anotações teológicas aqui..."></textarea>
                 <button id="btn-save-notes">Salvar Estudo e Anotações</button>
-                <p id="save-note-status" class="placeholder-text" style="margin-top:5px;"></p>
+                <p id="save-note-status" class="placeholder-text"></p>
             </div>
         </div>
     </div>
@@ -117,7 +119,7 @@
             <h2 style="color:#b07d3b; font-size: 1.3em;">Meus Estudos</h2>
             <div style="width: 30px;"></div>
         </header>
-        <div class="study-content" id="my-notes-container" style="background: transparent; box-shadow: none; padding:0;">
+        <div id="my-notes-container">
             <p class="placeholder-text">Carregando seus estudos...</p>
         </div>
     </div>
@@ -129,14 +131,14 @@
             <h2 style="color:#b07d3b; font-size: 1.3em;">Cronograma</h2>
             <div style="width: 30px;"></div>
         </header>
-        <div class="study-content" style="background: transparent; box-shadow: none; padding:0;">
+        <div>
             <div class="card" style="text-align: left;">
                 <h3 style="color: #b07d3b;">📅 Gerador de Plano Teológico</h3>
                 <p class="dict-sub">Quantos dias na semana você deseja estudar a Bíblia?</p>
                 <input type="number" id="study-days-input" placeholder="Ex: 3" min="1" max="7" style="margin-bottom: 10px;">
                 <button id="btn-generate-plan">Gerar Plano de Estudo</button>
             </div>
-            <div id="ai-plan-content" class="bible-reader card" style="display:none; text-align: left; background:#fff; margin-top:15px;">
+            <div id="ai-plan-content" class="card" style="display:none; text-align: left; margin-top:15px; font-size: 1.05em; line-height: 1.6;">
                 <!-- O plano gerado aparecerá aqui -->
             </div>
         </div>
@@ -184,7 +186,7 @@
             <h2 style="color:#b07d3b; font-size: 1.3em;">Painel Admin</h2>
             <div style="width: 30px;"></div>
         </header>
-        <div class="study-content" style="background: transparent; box-shadow: none; padding:0;">
+        <div>
             
             <!-- Adicionar QUIZ via TXT -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">

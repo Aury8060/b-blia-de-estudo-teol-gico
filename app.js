@@ -100,18 +100,14 @@ function initBibleNavigation() {
 }
 
 window.openScreen = (screenId) => {
-    // Trocar a tela visível
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
     
-    // Atualizar classe 'active' nos botões do menu inferior
     document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
     
-    // Busca o botão correspondente e adiciona 'active'
     let targetNavBtn = Array.from(document.querySelectorAll('.nav-item')).find(btn => btn.getAttribute('onclick').includes(screenId));
     if(targetNavBtn) targetNavBtn.classList.add('active');
 
-    // Funções específicas da tela
     if (screenId === 'study-screen') startStudySession();
     if (screenId === 'notes-screen') loadMyNotes();
 };
@@ -230,7 +226,6 @@ document.getElementById('btn-logout').addEventListener('click', () => {
     isAdmin = false;
     localStorage.removeItem('teologia_user_session'); 
     
-    // Ocultar menu inferior ao deslogar
     document.getElementById('bottom-nav').style.display = 'none';
 
     openScreen('login-screen');
@@ -242,13 +237,9 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 async function loadDashboard() {
     openScreen('dashboard-screen');
     
-    // Exibe o Menu Inferior Globalmente
     document.getElementById('bottom-nav').style.display = 'flex';
-    
     document.getElementById('user-name').innerText = isAdmin ? "AU Costa" : currentUser.email;
     document.getElementById('user-role').innerText = isAdmin ? "Criador / Admin" : "Teólogo em Formação";
-    
-    // Mostra ou esconde o botão Admin no menu inferior
     document.getElementById('nav-admin').style.display = isAdmin ? 'flex' : 'none';
 
     const dbRef = ref(db);
@@ -292,7 +283,6 @@ window.leaveStudy = async () => {
         update(userRef, { tempoEstudo: tempoAtual + secondsStudied });
     }
     
-    // Reseta o estado dos controles
     document.getElementById('controls-wrapper').style.display = 'flex';
     document.getElementById('header-book-btn').innerText = `Selecionar Livro`;
     document.getElementById('notes-area-wrapper').style.display = 'none';
@@ -301,7 +291,6 @@ window.leaveStudy = async () => {
     loadDashboard();
 };
 
-// NOVO: Lógica do Botão Superior Redondo (Alterna a exibição da caixa de controles)
 document.getElementById('header-book-btn').addEventListener('click', () => {
     const controls = document.getElementById('controls-wrapper');
     controls.style.display = (controls.style.display === 'none' || controls.style.display === '') ? 'flex' : 'none';
@@ -347,12 +336,8 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
             }
             readerDiv.innerHTML = htmlContent;
             
-            // Oculta os controles após carregar
             document.getElementById('controls-wrapper').style.display = 'none';
-            // Exibe a área de anotações
             document.getElementById('notes-area-wrapper').style.display = 'block';
-
-            // NOVO: Atualiza o nome do botão redondo lá no header!
             document.getElementById('header-book-btn').innerText = `${book} ${chapter}`;
 
         } else {
@@ -363,7 +348,6 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
     }
 });
 
-// Botões de Paginação (Flutuantes - Próximo e Anterior)
 document.getElementById('btn-next-chapter').addEventListener('click', () => {
     const bookSelect = document.getElementById('bible-book');
     const chapterSelect = document.getElementById('bible-chapter');
@@ -372,7 +356,6 @@ document.getElementById('btn-next-chapter').addEventListener('click', () => {
         chapterSelect.selectedIndex++;
         document.getElementById('btn-load-text').click();
     } else if (bookSelect.selectedIndex < bookSelect.options.length - 1) {
-        // Pula pro próximo livro e vai pro capítulo 1
         bookSelect.selectedIndex++;
         setTimeout(() => {
             chapterSelect.selectedIndex = 0;
@@ -389,7 +372,6 @@ document.getElementById('btn-prev-chapter').addEventListener('click', () => {
         chapterSelect.selectedIndex--;
         document.getElementById('btn-load-text').click();
     } else if (bookSelect.selectedIndex > 0) {
-        // Volta pro livro anterior, no último capítulo
         bookSelect.selectedIndex--;
         setTimeout(() => {
             chapterSelect.selectedIndex = chapterSelect.options.length - 1;

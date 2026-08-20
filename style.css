@@ -1,9 +1,29 @@
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-body { background-color: #f8f9fa; color: #333333; }
 
-/* Adicionado espaço extra embaixo para não esconder o texto atrás do menu inferior */
-.screen { display: none; padding: 20px; padding-bottom: 90px; min-height: 100vh; max-width: 800px; margin: 0 auto; }
+/* 1. TRAVANDO A TELA E BLOQUEANDO O 'PUXAR PARA ATUALIZAR' */
+html, body { 
+    height: 100%; /* Ocupa exatamente 100% da tela, sem estourar */
+    overflow: hidden; /* Trava o scroll global */
+    overscroll-behavior-y: none; /* DESATIVA O PUXAR PARA ATUALIZAR DO CELULAR */
+    background-color: #f8f9fa; 
+    color: #333333; 
+}
+
+/* 2. ADAPTANDO AS TELAS PARA O FORMATO DE APP */
+.screen { 
+    display: none; 
+    height: 100%; /* Pega 100% do espaço disponível */
+    max-width: 800px; 
+    margin: 0 auto; 
+    padding: 20px 20px 90px 20px; /* 90px no fundo para o menu não tampar o texto */
+    position: relative; 
+    overflow-y: auto; /* Permite scroll apenas dentro da tela ativa */
+}
 .screen.active { display: block; }
+
+/* 3. TELA DE ESTUDO ESPECÍFICA (Trava o topo e roda só o texto) */
+#study-screen { overflow: hidden; padding-top: 0; }
+#study-screen.active { display: flex; flex-direction: column; }
 
 /* Login */
 .login-box { max-width: 400px; margin: 80px auto; background: #ffffff; padding: 30px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); }
@@ -21,13 +41,28 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .btn-outline:hover { background: rgba(176, 125, 59, 0.1); }
 .error-msg { color: #e53e3e; font-size: 0.9em; margin-top: 10px; }
 
-/* Header Global (Telas Normais) */
+/* Header Global e Botão Sair Discreto */
 header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
 header button { width: auto; padding: 8px 16px; margin: 0; background: #f0f0f0; color: #333; }
 header button:hover { background: #e0e0e0; }
-.user-info { display: flex; align-items: center; gap: 15px; }
+.user-info { display: flex; align-items: center; gap: 15px; width: 100%; }
+.user-details { flex: 1; overflow: hidden; }
 #profile-pic { width: 50px; height: 50px; border-radius: 50%; background: #ddd; object-fit: cover; }
 .badge { background: #b07d3b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
+
+.btn-logout-discreet {
+    background: #fdf2f2 !important;
+    color: #e53e3e !important;
+    border: 1px solid #fc8181 !important;
+    padding: 2px 10px !important;
+    border-radius: 12px !important;
+    font-size: 0.8em !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+    width: auto !important;
+    cursor: pointer;
+}
+.btn-logout-discreet:hover { background: #e53e3e !important; color: white !important; }
 
 /* Dashboard Cards */
 .stats-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
@@ -35,10 +70,10 @@ header button:hover { background: #e0e0e0; }
 .card h3 { font-size: 1em; color: #777; margin-bottom: 10px; }
 .card p { font-size: 1.5em; font-weight: bold; color: #48bb78; }
 
-/* NOVO: Header Específico da Tela de Estudo (Igual ao Print) */
+/* Header Específico da Tela de Estudo */
 .study-header {
     background: #b07d3b;
-    margin: -20px -20px 20px -20px; 
+    margin: 0 -20px 15px -20px; 
     padding: 15px 20px;
     display: flex;
     justify-content: space-between;
@@ -46,31 +81,20 @@ header button:hover { background: #e0e0e0; }
     border-bottom: none;
     border-radius: 0 0 12px 12px;
 }
-.study-header button {
-    background: transparent;
-    color: white;
-    border: none;
-    font-size: 1.2em;
-    padding: 5px;
-    margin: 0;
-}
+.study-header button { background: transparent; color: white; border: none; font-size: 1.2em; padding: 5px; margin: 0; }
 .study-header button:hover { background: rgba(255,255,255,0.1); }
-#header-book-btn {
-    border: 1px solid white;
-    border-radius: 20px;
-    padding: 6px 20px;
-    font-size: 1em;
-    font-weight: normal;
-}
+#header-book-btn { border: 1px solid white; border-radius: 20px; padding: 6px 20px; font-size: 1em; font-weight: normal; }
 #session-timer { color: #fff; font-size: 0.9em; opacity: 0.8; }
 
-/* Controles de Estudo (Ocultável) */
-.study-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+/* Controles de Estudo */
+.study-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: transparent; box-shadow: none; padding: 0; }
+.study-controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 4px 10px rgba(0,0,0,0.05); flex-shrink: 0; }
 .study-controls select { margin: 0; }
 .study-controls button { margin: 0; margin-top: 5px; }
 
-/* Leitor da Bíblia (Clean - Light Mode) */
-.bible-reader { background: transparent; padding: 10px 0; margin: 15px 0; max-height: 65vh; overflow-y: auto; line-height: 1.8; font-size: 1.15em; }
+/* Leitor da Bíblia (Flexível e Rolável) */
+.levels { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.bible-reader { flex: 1; overflow-y: auto; padding-right: 5px; margin: 10px 0; background: transparent; line-height: 1.8; font-size: 1.15em; max-height: none; }
 .bible-reader p { margin-bottom: 15px; }
 .placeholder-text { color: #888; text-align: center; font-style: italic; font-size: 0.95em; }
 
@@ -80,10 +104,10 @@ header button:hover { background: #e0e0e0; }
 .verse-text strong { color: #888; margin-right: 8px; font-weight: normal; font-size: 0.9em; }
 .v-text-content { display: inline; color: #333; }
 
-/* NOVO: Botões Flutuantes (Circulares) */
+/* Botões Flutuantes (Circulares) */
 .nav-circle {
     position: fixed;
-    bottom: 90px;
+    bottom: 90px; /* Fica logo acima do menu inferior */
     width: 50px;
     height: 50px;
     background: #ffffff;
@@ -107,14 +131,15 @@ header button:hover { background: #e0e0e0; }
 .strong-link { color: #b07d3b; cursor: pointer; font-size: 0.8em; vertical-align: super; text-decoration: underline; background: rgba(176, 125, 59, 0.1); padding: 2px 4px; border-radius: 4px; }
 .strong-link:hover { background: rgba(176, 125, 59, 0.2); }
 
-textarea { height: 120px; resize: none; margin-bottom: 15px; }
+#notes-area-wrapper { flex-shrink: 0; margin-top: 15px; padding-bottom: 10px; }
+textarea { height: 100px; resize: none; margin-bottom: 10px; }
 
-/* NOVO: Menu Inferior (TabBar) */
+/* Menu Inferior Fixo (TabBar) */
 .bottom-nav {
     position: fixed; bottom: 0; left: 0; width: 100%;
     background: #ffffff;
     border-top: 1px solid #ddd;
-    display: none; /* Ativado via JS no login */
+    display: none;
     justify-content: space-around;
     padding: 8px 0 15px 0;
     z-index: 1000;
