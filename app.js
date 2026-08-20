@@ -100,9 +100,18 @@ function initBibleNavigation() {
 }
 
 window.openScreen = (screenId) => {
+    // Trocar a tela visível
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
     
+    // Atualizar classe 'active' nos botões do menu inferior
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    
+    // Busca o botão correspondente e adiciona 'active'
+    let targetNavBtn = Array.from(document.querySelectorAll('.nav-item')).find(btn => btn.getAttribute('onclick').includes(screenId));
+    if(targetNavBtn) targetNavBtn.classList.add('active');
+
+    // Funções específicas da tela
     if (screenId === 'study-screen') startStudySession();
     if (screenId === 'notes-screen') loadMyNotes();
 };
@@ -120,7 +129,7 @@ document.getElementById('btn-login').addEventListener('click', async () => {
     const errorMsg = document.getElementById('auth-error');
 
     if (!emailInput || !passInput) {
-        errorMsg.style.color = "#fc8181";
+        errorMsg.style.color = "#e53e3e";
         errorMsg.innerText = "Preencha o usuário e a senha.";
         return;
     }
@@ -135,7 +144,7 @@ document.getElementById('btn-login').addEventListener('click', async () => {
     }
 
     try {
-        errorMsg.style.color = "#a0aec0";
+        errorMsg.style.color = "#777";
         errorMsg.innerText = "Verificando dados...";
         
         const userKey = sanitizeKey(emailInput);
@@ -150,15 +159,15 @@ document.getElementById('btn-login').addEventListener('click', async () => {
                 localStorage.setItem('teologia_user_session', JSON.stringify({ uid: currentUser.uid, email: currentUser.email, isAdmin: isAdmin }));
                 loadDashboard();
             } else {
-                errorMsg.style.color = "#fc8181";
+                errorMsg.style.color = "#e53e3e";
                 errorMsg.innerText = "Senha incorreta.";
             }
         } else {
-            errorMsg.style.color = "#fc8181";
+            errorMsg.style.color = "#e53e3e";
             errorMsg.innerText = "Usuário não encontrado. Crie uma conta.";
         }
     } catch (error) {
-        errorMsg.style.color = "#fc8181";
+        errorMsg.style.color = "#e53e3e";
         errorMsg.innerText = "Erro ao conectar ao banco de dados.";
     }
 });
@@ -169,32 +178,32 @@ document.getElementById('btn-register').addEventListener('click', async () => {
     const errorMsg = document.getElementById('auth-error');
 
     if (!emailInput || !passInput) {
-        errorMsg.style.color = "#fc8181";
+        errorMsg.style.color = "#e53e3e";
         errorMsg.innerText = "Preencha um nome de usuário/e-mail e senha para criar a conta.";
         return;
     }
 
     if (passInput.length < 6) {
-        errorMsg.style.color = "#fc8181";
+        errorMsg.style.color = "#e53e3e";
         errorMsg.innerText = "A senha deve ter no mínimo 6 caracteres.";
         return;
     }
 
     if (emailInput.toLowerCase() === 'au.costa' || emailInput.toLowerCase() === 'admin_au_costa') {
-        errorMsg.style.color = "#fc8181";
+        errorMsg.style.color = "#e53e3e";
         errorMsg.innerText = "Nome de usuário reservado pelo sistema.";
         return;
     }
 
     try {
-        errorMsg.style.color = "#a0aec0";
+        errorMsg.style.color = "#777";
         errorMsg.innerText = "Criando conta no banco de dados, aguarde...";
         
         const userKey = sanitizeKey(emailInput);
         const snapshot = await get(child(ref(db), `Biblia_Estudo/Users/${userKey}`));
         
         if (snapshot.exists()) {
-            errorMsg.style.color = "#fc8181";
+            errorMsg.style.color = "#e53e3e";
             errorMsg.innerText = "Este usuário já existe. Tente fazer o login.";
         } else {
             await set(ref(db, `Biblia_Estudo/Users/${userKey}`), {
@@ -211,7 +220,7 @@ document.getElementById('btn-register').addEventListener('click', async () => {
             loadDashboard(); 
         }
     } catch (error) {
-        errorMsg.style.color = "#fc8181";
+        errorMsg.style.color = "#e53e3e";
         errorMsg.innerText = "Erro ao criar conta. Verifique sua conexão.";
     }
 });
@@ -221,6 +230,9 @@ document.getElementById('btn-logout').addEventListener('click', () => {
     isAdmin = false;
     localStorage.removeItem('teologia_user_session'); 
     
+    // Ocultar menu inferior ao deslogar
+    document.getElementById('bottom-nav').style.display = 'none';
+
     openScreen('login-screen');
     document.getElementById('email').value = '';
     document.getElementById('password').value = '';
@@ -229,9 +241,15 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 
 async function loadDashboard() {
     openScreen('dashboard-screen');
+    
+    // Exibe o Menu Inferior Globalmente
+    document.getElementById('bottom-nav').style.display = 'flex';
+    
     document.getElementById('user-name').innerText = isAdmin ? "AU Costa" : currentUser.email;
     document.getElementById('user-role').innerText = isAdmin ? "Criador / Admin" : "Teólogo em Formação";
-    document.getElementById('admin-panel-btn').style.display = isAdmin ? 'block' : 'none';
+    
+    // Mostra ou esconde o botão Admin no menu inferior
+    document.getElementById('nav-admin').style.display = isAdmin ? 'flex' : 'none';
 
     const dbRef = ref(db);
     try {
@@ -274,21 +292,19 @@ window.leaveStudy = async () => {
         update(userRef, { tempoEstudo: tempoAtual + secondsStudied });
     }
     
-    // Reseta os botões de controle para sempre aparecerem quando voltar ao painel
+    // Reseta o estado dos controles
     document.getElementById('controls-wrapper').style.display = 'flex';
-    document.getElementById('btn-toggle-controls').style.display = 'none';
-    
-    // Reseta o título da leitura estruturada
-    document.getElementById('current-reading-title').innerHTML = `Leitura Estruturada <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span>`;
+    document.getElementById('header-book-btn').innerText = `Selecionar Livro`;
+    document.getElementById('notes-area-wrapper').style.display = 'none';
     
     openScreen('dashboard-screen');
     loadDashboard();
 };
 
-// Lógica do novo botão de Toggle (Expandir / Ocultar controles)
-document.getElementById('btn-toggle-controls').addEventListener('click', () => {
-    document.getElementById('controls-wrapper').style.display = 'flex';
-    document.getElementById('btn-toggle-controls').style.display = 'none';
+// NOVO: Lógica do Botão Superior Redondo (Alterna a exibição da caixa de controles)
+document.getElementById('header-book-btn').addEventListener('click', () => {
+    const controls = document.getElementById('controls-wrapper');
+    controls.style.display = (controls.style.display === 'none' || controls.style.display === '') ? 'flex' : 'none';
 });
 
 document.getElementById('btn-load-text').addEventListener('click', async () => {
@@ -322,7 +338,7 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
                             <strong>${verseNum}</strong> <span class="v-text-content">${textoOriginal}</span> ${strongLinks}
                         </div>`;
                 } else {
-                    let textoVersao = verseData[version] ? verseData[version] : `<span style="color:#fc8181">Indisponível nesta tradução.</span>`;
+                    let textoVersao = verseData[version] ? verseData[version] : `<span style="color:#e53e3e">Indisponível nesta tradução.</span>`;
                     htmlContent += `
                         <div class="verse-text" onclick="analyzeVerse('${book}', '${chapter}', '${verseNum}', this)">
                             <strong>${verseNum}</strong> <span class="v-text-content">${textoVersao}</span>
@@ -331,12 +347,13 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
             }
             readerDiv.innerHTML = htmlContent;
             
-            // Sucesso! Oculta a caixa de controles e mostra o botão "Mudar Livro"
+            // Oculta os controles após carregar
             document.getElementById('controls-wrapper').style.display = 'none';
-            document.getElementById('btn-toggle-controls').style.display = 'block';
+            // Exibe a área de anotações
+            document.getElementById('notes-area-wrapper').style.display = 'block';
 
-            // AQUI ESTÁ A ATUALIZAÇÃO DO TÍTULO DINÂMICO DO LIVRO E CAPÍTULO!
-            document.getElementById('current-reading-title').innerHTML = `${book} - Capítulo ${chapter} <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span>`;
+            // NOVO: Atualiza o nome do botão redondo lá no header!
+            document.getElementById('header-book-btn').innerText = `${book} ${chapter}`;
 
         } else {
             readerDiv.innerHTML = '<p class="placeholder-text error-msg">O texto deste capítulo ainda não foi importado.</p>';
@@ -346,7 +363,7 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
     }
 });
 
-// Botões de Paginação (Próximo e Anterior)
+// Botões de Paginação (Flutuantes - Próximo e Anterior)
 document.getElementById('btn-next-chapter').addEventListener('click', () => {
     const bookSelect = document.getElementById('bible-book');
     const chapterSelect = document.getElementById('bible-chapter');
@@ -389,7 +406,7 @@ document.getElementById('btn-save-notes').addEventListener('click', async () => 
 
     if (!notesText.trim()) {
         statusText.innerText = "❌ Escreva algo antes de salvar.";
-        statusText.style.color = "#fc8181";
+        statusText.style.color = "#e53e3e";
         return;
     }
 
@@ -430,8 +447,8 @@ async function loadMyNotes() {
             notesArray.forEach(note => {
                 html += `
                 <div class="card" style="text-align: left; margin-bottom: 15px;">
-                    <h3 style="color: #ecc94b;">📖 ${note.livro} ${note.capitulo} <span style="float: right; font-size: 0.8em; color: #a0aec0;">${note.data}</span></h3>
-                    <p style="white-space: pre-wrap; font-size: 1.05em; color: #e2e8f0; margin-top: 10px;">${note.texto}</p>
+                    <h3 style="color: #b07d3b;">📖 ${note.livro} ${note.capitulo} <span style="float: right; font-size: 0.8em; color: #777;">${note.data}</span></h3>
+                    <p style="white-space: pre-wrap; font-size: 1.05em; color: #333; margin-top: 10px;">${note.texto}</p>
                 </div>`;
             });
             container.innerHTML = html;
@@ -458,7 +475,7 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
     copyBtn.style.display = 'none';
     content.innerHTML = `
         <div style="text-align: center; padding: 20px;">
-            <p style="color: #63b3ed; font-weight: bold; font-size: 1.2em;">Construindo Rota de Estudo Exaustiva...</p>
+            <p style="color: #b07d3b; font-weight: bold; font-size: 1.2em;">Construindo Rota de Estudo Exaustiva...</p>
             <p class="dict-sub">Analisando contexto, raízes linguísticas e buscando dezenas de referências cruzadas. Aguarde ⏳</p>
         </div>`;
     modal.style.display = 'block';
@@ -518,7 +535,7 @@ document.getElementById('btn-copy-ai-notes').addEventListener('click', () => {
     copyBtn.style.background = "#48bb78";
     setTimeout(() => {
         copyBtn.innerText = "📥 Copiar para minhas anotações";
-        copyBtn.style.background = "#3182ce";
+        copyBtn.style.background = "#b07d3b";
         closeAIModal();
     }, 2000);
 });
@@ -538,7 +555,7 @@ document.getElementById('btn-generate-plan').addEventListener('click', async () 
     }
 
     planDiv.style.display = 'block';
-    planDiv.innerHTML = '<p class="placeholder-text" style="color:#ecc94b;">Buscando cronograma no banco de dados... ⏳</p>';
+    planDiv.innerHTML = '<p class="placeholder-text" style="color:#b07d3b;">Buscando cronograma no banco de dados... ⏳</p>';
 
     try {
         const planKey = `Plano_${days}`;
@@ -608,7 +625,8 @@ function loadQuizQuestion() {
         const btn = document.createElement('button');
         btn.className = 'quiz-opt-btn';
         btn.innerText = `${letra}) ${texto}`;
-        btn.style.background = "#4a5568";
+        btn.style.background = "#f0f0f0";
+        btn.style.color = "#333";
         btn.style.textAlign = "left";
         btn.onclick = () => handleQuizAnswer(letra, q.resposta_correta, btn);
         container.appendChild(btn);
@@ -633,16 +651,28 @@ function handleQuizAnswer(selectedLetter, correctLetter, btnElement) {
     clearInterval(quizTimerInterval);
     
     const buttons = document.querySelectorAll('.quiz-opt-btn');
-    buttons.forEach(b => b.disabled = true); 
+    buttons.forEach(b => {
+        b.disabled = true;
+        b.style.opacity = "0.7";
+    }); 
 
     if (selectedLetter === correctLetter) {
-        if(btnElement) btnElement.style.background = "#48bb78"; 
+        if(btnElement) {
+            btnElement.style.background = "#48bb78"; 
+            btnElement.style.color = "white";
+        }
         quizHits++;
     } else {
-        if(btnElement) btnElement.style.background = "#fc8181"; 
+        if(btnElement) {
+            btnElement.style.background = "#e53e3e"; 
+            btnElement.style.color = "white";
+        }
         quizMisses++;
         buttons.forEach(b => {
-            if(b.innerText.startsWith(correctLetter)) b.style.background = "#48bb78";
+            if(b.innerText.startsWith(correctLetter)) {
+                b.style.background = "#48bb78";
+                b.style.color = "white";
+            }
         });
     }
 
@@ -691,10 +721,10 @@ document.getElementById('btn-import-quiz').addEventListener('click', async () =>
     
     if (fileInput.files.length === 0) {
         statusText.innerText = "❌ Selecione um arquivo .txt";
-        statusText.style.color = "#fc8181"; return;
+        statusText.style.color = "#e53e3e"; return;
     }
 
-    statusText.style.color = "#a0aec0";
+    statusText.style.color = "#777";
     statusText.innerText = "Lendo arquivo de quiz... Aguarde.";
 
     for (let file of fileInput.files) {
@@ -739,7 +769,7 @@ document.getElementById('btn-import-quiz').addEventListener('click', async () =>
                 statusText.innerText = `✅ Arquivo ${file.name} processado! ${qtdImportada} perguntas injetadas no banco de forma aleatória.`;
             } catch (error) {
                 console.error(error);
-                statusText.style.color = "#fc8181";
+                statusText.style.color = "#e53e3e";
                 statusText.innerText = "❌ Erro ao ler o arquivo TXT.";
             }
         };
@@ -784,11 +814,11 @@ document.getElementById('btn-import-ai-cache').addEventListener('click', async (
     
     if (fileInput.files.length === 0) {
         statusText.innerText = "❌ Selecione um arquivo .json com os estudos.";
-        statusText.style.color = "#fc8181"; 
+        statusText.style.color = "#e53e3e"; 
         return;
     }
 
-    statusText.style.color = "#a0aec0";
+    statusText.style.color = "#777";
     statusText.innerText = "Lendo e injetando no Cache da IA... Aguarde.";
 
     for (let file of fileInput.files) {
@@ -808,7 +838,7 @@ document.getElementById('btn-import-ai-cache').addEventListener('click', async (
                 statusText.innerText = `✅ Cache importado com sucesso!`;
             } catch (error) {
                 console.error("Erro na importação do Cache:", error);
-                statusText.style.color = "#fc8181";
+                statusText.style.color = "#e53e3e";
                 statusText.innerText = `❌ Erro no processamento. Verifique se o formato do JSON está correto.`;
             }
         };
@@ -823,11 +853,11 @@ document.getElementById('btn-import-plans').addEventListener('click', async () =
     
     if (fileInput.files.length === 0) {
         statusText.innerText = "❌ Selecione um arquivo .json com os planos.";
-        statusText.style.color = "#fc8181"; 
+        statusText.style.color = "#e53e3e"; 
         return;
     }
 
-    statusText.style.color = "#a0aec0";
+    statusText.style.color = "#777";
     statusText.innerText = "Importando Planos de Estudo... Aguarde.";
 
     for (let file of fileInput.files) {
@@ -847,7 +877,7 @@ document.getElementById('btn-import-plans').addEventListener('click', async () =
                 statusText.innerText = `✅ Planos de estudo importados com sucesso no banco!`;
             } catch (error) {
                 console.error("Erro:", error);
-                statusText.style.color = "#fc8181";
+                statusText.style.color = "#e53e3e";
                 statusText.innerText = `❌ Erro no processamento. Verifique o JSON.`;
             }
         };

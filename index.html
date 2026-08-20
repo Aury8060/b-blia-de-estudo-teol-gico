@@ -6,7 +6,7 @@
     <title>Bíblia Estudo Profundo</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1a202c">
+    <meta name="theme-color" content="#ffffff">
 </head>
 <body>
 
@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <!-- PAINEL PRINCIPAL -->
+    <!-- TELA HOME / PERFIL (Antigo Dashboard) -->
     <div id="dashboard-screen" class="screen">
         <header>
             <div class="user-info">
@@ -33,7 +33,7 @@
                     <span id="user-role" class="badge">Aluno</span>
                 </div>
             </div>
-            <button id="btn-logout">Sair</button>
+            <button id="btn-logout" style="background:#e53e3e; color:white;">Sair</button>
         </header>
 
         <div class="stats-cards">
@@ -46,40 +46,25 @@
                 <p id="quiz-score">0 pts</p>
             </div>
         </div>
-
-        <div class="menu-grid">
-            <button class="menu-btn" onclick="openScreen('study-screen')">
-                📚 Estudar a Palavra
-            </button>
-            <button class="menu-btn" onclick="openScreen('notes-screen')">
-                📝 Minhas Anotações
-            </button>
-            <button class="menu-btn" onclick="openScreen('quiz-screen')">
-                🧠 Quiz Teológico
-            </button>
-            <button class="menu-btn" onclick="openScreen('agenda-screen')">
-                📅 Agenda de Leitura
-            </button>
-            <button class="menu-btn" id="admin-panel-btn" style="display: none;" onclick="openScreen('admin-screen')">
-                ⚙️ Painel Admin (Criador)
-            </button>
+        
+        <div class="card" style="text-align: left;">
+            <h3 style="color:#b07d3b; margin-bottom: 10px;">Bem-vindo de volta!</h3>
+            <p style="color:#777; font-size:1em; font-weight:normal;">Utilize o menu na parte inferior da tela para navegar pela sua Bíblia, acessar o Super Professor, fazer o Quiz ou visualizar seus planos de leitura.</p>
         </div>
     </div>
 
-    <!-- TELA DE ESTUDO -->
+    <!-- TELA DE ESTUDO (Aparência do Print) -->
     <div id="study-screen" class="screen">
-        <header>
-            <button onclick="leaveStudy()">⬅ Voltar</button>
-            <h2>Módulo de Estudo</h2>
+        <!-- Novo Header Estilizado -->
+        <header class="study-header">
+            <button onclick="leaveStudy()">↶</button>
+            <button id="header-book-btn">Selecionar Livro</button>
             <span id="session-timer">00:00</span>
         </header>
         
-        <div class="study-content">
+        <div class="study-content" style="background: transparent; box-shadow: none; padding: 0;">
             
-            <!-- Botão para reexibir os controles após ocultá-los -->
-            <button id="btn-toggle-controls">🔍 Trocar Livro, Capítulo ou Tradução</button>
-
-            <!-- Controles agrupados para podermos ocultar/mostrar -->
+            <!-- Controles agrupados (Ocultam ao carregar) -->
             <div class="study-controls" id="controls-wrapper">
                 <select id="bible-book"></select>
                 <select id="bible-chapter"></select>
@@ -108,22 +93,20 @@
             </div>
             
             <div class="levels">
-                <!-- AQUI ESTÁ A CORREÇÃO: ADICIONAMOS O ID current-reading-title -->
-                <h3 id="current-reading-title">Leitura Estruturada <span style="font-size: 0.6em; color: #a0aec0; font-weight: normal;">(Clique em um versículo para análise avançada)</span></h3>
-                
                 <div class="bible-reader" id="bible-reader">
-                    <p class="placeholder-text">Selecione um livro, capítulo e versão acima para iniciar o estudo profundo.</p>
+                    <p class="placeholder-text">Clique no botão do topo para selecionar um livro e iniciar o estudo.</p>
                 </div>
 
-                <div class="chapter-nav">
-                    <button id="btn-prev-chapter">⬅ Cap. Anterior</button>
-                    <button id="btn-next-chapter">Próximo Cap. ➡</button>
-                </div>
+                <!-- Botões Flutuantes Redondos -->
+                <button id="btn-prev-chapter" class="nav-circle">‹</button>
+                <button id="btn-next-chapter" class="nav-circle">›</button>
             </div>
             
-            <textarea id="study-notes" placeholder="Faça suas anotações teológicas aqui..."></textarea>
-            <button id="btn-save-notes">Salvar Estudo e Anotações</button>
-            <p id="save-note-status" class="placeholder-text" style="margin-top:5px;"></p>
+            <div id="notes-area-wrapper" style="display: none; margin-top: 20px;">
+                <textarea id="study-notes" placeholder="Faça suas anotações teológicas aqui..."></textarea>
+                <button id="btn-save-notes">Salvar Estudo e Anotações</button>
+                <p id="save-note-status" class="placeholder-text" style="margin-top:5px;"></p>
+            </div>
         </div>
     </div>
 
@@ -131,9 +114,10 @@
     <div id="notes-screen" class="screen">
         <header>
             <button onclick="openScreen('dashboard-screen')">⬅ Voltar</button>
-            <h2>Meus Estudos Salvos</h2>
+            <h2 style="color:#b07d3b; font-size: 1.3em;">Meus Estudos</h2>
+            <div style="width: 30px;"></div>
         </header>
-        <div class="study-content" id="my-notes-container">
+        <div class="study-content" id="my-notes-container" style="background: transparent; box-shadow: none; padding:0;">
             <p class="placeholder-text">Carregando seus estudos...</p>
         </div>
     </div>
@@ -142,16 +126,17 @@
     <div id="agenda-screen" class="screen">
         <header>
             <button onclick="openScreen('dashboard-screen')">⬅ Voltar</button>
-            <h2>Cronograma de Estudo</h2>
+            <h2 style="color:#b07d3b; font-size: 1.3em;">Cronograma</h2>
+            <div style="width: 30px;"></div>
         </header>
-        <div class="study-content">
+        <div class="study-content" style="background: transparent; box-shadow: none; padding:0;">
             <div class="card" style="text-align: left;">
-                <h3 style="color: #ecc94b;">📅 Gerador de Plano Teológico</h3>
+                <h3 style="color: #b07d3b;">📅 Gerador de Plano Teológico</h3>
                 <p class="dict-sub">Quantos dias na semana você deseja estudar a Bíblia?</p>
                 <input type="number" id="study-days-input" placeholder="Ex: 3" min="1" max="7" style="margin-bottom: 10px;">
-                <button id="btn-generate-plan" style="background: #3182ce;">Gerar Plano de Estudo</button>
+                <button id="btn-generate-plan">Gerar Plano de Estudo</button>
             </div>
-            <div id="ai-plan-content" class="bible-reader" style="display:none; text-align: left;">
+            <div id="ai-plan-content" class="bible-reader card" style="display:none; text-align: left; background:#fff; margin-top:15px;">
                 <!-- O plano gerado aparecerá aqui -->
             </div>
         </div>
@@ -160,15 +145,16 @@
     <!-- TELA DE QUIZ -->
     <div id="quiz-screen" class="screen">
         <header>
-            <button onclick="leaveQuiz()">⬅ Voltar e Salvar</button>
-            <h2>Quiz Teológico</h2>
+            <button onclick="leaveQuiz()">⬅ Sair e Salvar</button>
+            <h2 style="color:#b07d3b; font-size: 1.3em;">Quiz</h2>
+            <div style="width: 30px;"></div>
         </header>
         
         <!-- Configuração do Quiz -->
         <div id="quiz-setup" class="card" style="text-align: left;">
-            <h3 style="color: #63b3ed;">Configuração da Partida</h3>
+            <h3 style="color: #b07d3b;">Configuração da Partida</h3>
             <p class="dict-sub">Escolha o tempo máximo para responder cada pergunta.</p>
-            <label style="color: #a0aec0;">Tempo por pergunta (segundos): <span id="time-display">20</span>s</label>
+            <label style="color: #777;">Tempo por pergunta (segundos): <span id="time-display" style="color:#333; font-weight:bold;">20</span>s</label>
             <input type="range" id="quiz-time-range" min="10" max="60" value="20" oninput="document.getElementById('time-display').innerText = this.value">
             <button id="btn-start-quiz" style="margin-top: 20px;">Iniciar Partida Aleatória</button>
         </div>
@@ -176,12 +162,12 @@
         <!-- Área Ativa do Quiz -->
         <div id="quiz-active" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <span class="badge" style="font-size: 1em; background: #2d3748; color: #63b3ed;">Acertos: <span id="quiz-hits">0</span> | Erros: <span id="quiz-misses">0</span></span>
-                <span id="quiz-timer-text" style="font-size: 1.5em; font-weight: bold; color: #fc8181;">20s</span>
+                <span class="badge" style="font-size: 1em; background: #eee; color: #333;">Acertos: <span id="quiz-hits" style="color:#48bb78;">0</span> | Erros: <span id="quiz-misses" style="color:#e53e3e;">0</span></span>
+                <span id="quiz-timer-text" style="font-size: 1.5em; font-weight: bold; color: #e53e3e;">20s</span>
             </div>
             
             <div class="card" style="text-align: left;">
-                <h3 id="question-text" style="font-size: 1.3em; margin-bottom: 20px;">Carregando pergunta...</h3>
+                <h3 id="question-text" style="font-size: 1.3em; margin-bottom: 20px; color:#333;">Carregando pergunta...</h3>
                 <div id="options-container" style="display: flex; flex-direction: column; gap: 10px;">
                     <!-- Botões de opção injetados via JS -->
                 </div>
@@ -195,24 +181,25 @@
     <div id="admin-screen" class="screen">
         <header>
             <button onclick="openScreen('dashboard-screen')">⬅ Voltar</button>
-            <h2>Painel do Administrador</h2>
+            <h2 style="color:#b07d3b; font-size: 1.3em;">Painel Admin</h2>
+            <div style="width: 30px;"></div>
         </header>
-        <div class="study-content">
+        <div class="study-content" style="background: transparent; box-shadow: none; padding:0;">
             
             <!-- Adicionar QUIZ via TXT -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #ecc94b; margin-bottom: 10px;">📥 Importar Banco de Quiz (TXT)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Selecione os arquivos .txt contendo as perguntas, opções e respostas.</p>
-                <input type="file" id="quiz-txt-input" accept=".txt" multiple style="background: #1a202c; padding: 10px;">
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">📥 Importar Banco de Quiz (TXT)</h3>
+                <p class="dict-sub" style="margin-bottom: 15px;">Selecione os arquivos .txt contendo as perguntas.</p>
+                <input type="file" id="quiz-txt-input" accept=".txt" multiple>
                 <button id="btn-import-quiz" style="background: #48bb78;">Processar e Enviar Quiz</button>
                 <p id="quiz-import-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
 
             <!-- Importar BÍBLIA JSON -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #63b3ed; margin-bottom: 10px;">📥 Importar Banco de Dados Bíblia (JSON)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">1. Selecione a versão da tradução. 2. Selecione o arquivo JSON estruturado em Array.</p>
-                <select id="admin-import-version" style="margin-bottom: 10px; background: #1a202c;">
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">📥 Importar Banco de Dados Bíblia (JSON)</h3>
+                <p class="dict-sub" style="margin-bottom: 15px;">1. Selecione a versão. 2. Selecione o arquivo JSON estruturado.</p>
+                <select id="admin-import-version" style="margin-bottom: 10px;">
                     <option value="acf">ACF (Almeida Corrigida Fiel)</option>
                     <option value="ara">ARA (Almeida Revista e Atualizada)</option>
                     <option value="arco">ARCO (Almeida Revista e Corrigida)</option>
@@ -232,37 +219,61 @@
                     <option value="msg">A Mensagem</option>
                     <option value="vfl">VFL (Versão Fácil de Ler)</option>
                 </select>
-                <input type="file" id="json-file-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
+                <input type="file" id="json-file-input" accept=".json" multiple>
                 <button id="btn-import-json" style="background: #48bb78;">Processar e Salvar no Firebase</button>
                 <p id="import-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
 
             <!-- Importar ESTUDO EXAUSTIVO (CACHE IA) -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #9f7aea; margin-bottom: 10px;">🧠 Importar Estudo Exaustivo (Cache IA)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do seu JSON contendo os estudos pré-gerados (ex: Gênesis_1_1).</p>
-                <input type="file" id="ai-cache-json-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
-                <button id="btn-import-ai-cache" style="background: #9f7aea; margin-top: 10px;">Processar e Injetar no Cache</button>
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">🧠 Importar Estudo Exaustivo (Cache IA)</h3>
+                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do seu JSON contendo os estudos (Gênesis_1_1).</p>
+                <input type="file" id="ai-cache-json-input" accept=".json" multiple>
+                <button id="btn-import-ai-cache">Processar e Injetar no Cache</button>
                 <p id="import-ai-cache-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
 
             <!-- Importar PLANOS DE ESTUDO -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #ed8936; margin-bottom: 10px;">📅 Importar Planos de Estudo (JSON)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do JSON contendo os planos (Plano_1, Plano_2...)</p>
-                <input type="file" id="plans-json-input" accept=".json" multiple style="background: #1a202c; padding: 10px;">
-                <button id="btn-import-plans" style="background: #ed8936; margin-top: 10px;">Processar e Salvar Planos</button>
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">📅 Importar Planos de Estudo (JSON)</h3>
+                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do JSON contendo os planos.</p>
+                <input type="file" id="plans-json-input" accept=".json" multiple>
+                <button id="btn-import-plans">Processar e Salvar Planos</button>
                 <p id="import-plans-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
 
             <div class="card" style="text-align: left;">
-                <h3 style="color: #fc8181; margin-bottom: 10px;">🗑️ Gerenciar Dados (Apagar Livro)</h3>
-                <select id="admin-delete-book" style="margin-bottom: 10px; background: #1a202c;"></select>
+                <h3 style="color: #e53e3e; margin-bottom: 10px;">🗑️ Gerenciar Dados (Apagar Livro)</h3>
+                <select id="admin-delete-book" style="margin-bottom: 10px;"></select>
                 <button id="btn-delete-book" style="background: #e53e3e;">Apagar Livro Selecionado</button>
                 <p id="delete-status" class="placeholder-text" style="margin-top: 10px;"></p>
             </div>
         </div>
     </div>
+
+    <!-- MENU INFERIOR FIXO -->
+    <nav id="bottom-nav" class="bottom-nav">
+        <button class="nav-item" onclick="openScreen('study-screen')">
+            <span class="icon">📖</span>
+            Estudar a Palavra
+        </button>
+        <button class="nav-item" onclick="openScreen('notes-screen')">
+            <span class="icon">📝</span>
+            Minhas Anotações
+        </button>
+        <button class="nav-item" onclick="openScreen('quiz-screen')">
+            <span class="icon">🧠</span>
+            Quiz Teológico
+        </button>
+        <button class="nav-item" onclick="openScreen('agenda-screen')">
+            <span class="icon">📅</span>
+            Agenda de Leitura
+        </button>
+        <button class="nav-item" id="nav-admin" style="display: none;" onclick="openScreen('admin-screen')">
+            <span class="icon">⚙️</span>
+            Painel Admin
+        </button>
+    </nav>
 
     <!-- MODAL DO DICIONÁRIO STRONG -->
     <div id="dict-modal" class="modal">
@@ -279,11 +290,11 @@
     <div id="ai-professor-modal" class="modal">
         <div class="modal-content ai-modal-content">
             <span class="close-btn" onclick="closeAIModal()">&times;</span>
-            <h3 style="color: #ecc94b; margin-bottom: 5px;">🎓 Super Professor (Exegese Profunda)</h3>
-            <p id="ai-verse-title" class="dict-sub" style="font-weight: bold; color: #63b3ed; font-size: 1.1em;"></p>
+            <h3 style="color: #b07d3b; margin-bottom: 5px;">🎓 Super Professor (Exegese Profunda)</h3>
+            <p id="ai-verse-title" class="dict-sub" style="font-weight: bold; color: #333; font-size: 1.1em;"></p>
             <hr>
             <div id="ai-verse-content" class="ai-content"></div>
-            <button id="btn-copy-ai-notes" style="display: none; background: #3182ce; margin-top: 20px;">📥 Copiar para minhas anotações</button>
+            <button id="btn-copy-ai-notes" style="display: none; background: #b07d3b; margin-top: 20px;">📥 Copiar para minhas anotações</button>
         </div>
     </div>
 
