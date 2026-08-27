@@ -1,5 +1,6 @@
+// IMPORTAÇÕES ATUALIZADAS: Adicionado suporte para queries de banco de dados (query, orderByKey, startAt, endAt)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, get, update, remove, child, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, get, update, remove, child, push, query, orderByKey, startAt, endAt } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCFO8ut8FhrTcXIaq4SVpIi5q_BHPEHVcg",
@@ -25,7 +26,7 @@ let secondsStudied = 0;
 let currentAIText = ""; 
 let wakeLock = null; 
 
-// Variáveis Globais do Quiz
+// Variáveis Globais do Quiz e do Menu de Ações
 let quizQuestions = [];
 let currentQuizIndex = 0;
 let quizHits = 0;
@@ -33,6 +34,8 @@ let quizMisses = 0;
 let quizTimerInterval;
 let quizTimeLeft = 20;
 let maxTimePerQuestion = 20;
+
+let currentSelectedVerse = null; // Guarda os dados do versículo clicado
 
 const bibleStructure = {
     "Gênesis": 50, "Êxodo": 40, "Levítico": 27, "Números": 36, "Deuteronômio": 34, "Josué": 24, "Juízes": 21, "Rute": 4, "1 Samuel": 31, "2 Samuel": 24, "1 Reis": 22, "2 Reis": 25, "1 Crônicas": 29, "2 Crônicas": 36, "Esdras": 10, "Neemias": 13, "Ester": 10, "Jó": 42, "Salmos": 150, "Provérbios": 31, "Eclesiastes": 12, "Cânticos": 8, "Isaías": 66, "Jeremias": 52, "Lamentações": 5, "Ezequiel": 48, "Daniel": 12, "Oséias": 14, "Joel": 3, "Amós": 9, "Obadias": 1, "Jonas": 4, "Miquéias": 7, "Naum": 3, "Habacuque": 3, "Sofonias": 3, "Ageu": 2, "Zacarias": 14, "Malaquias": 4,
@@ -110,6 +113,8 @@ window.openScreen = (screenId) => {
 
     if (screenId === 'study-screen') startStudySession();
     if (screenId === 'notes-screen') loadMyNotes();
+    // NOVO: Engatilha o carregamento de curiosidades ao abrir a tela
+    if (screenId === 'curiosities-screen') loadCuriosities(); 
 };
 
 // ==========================================
@@ -185,12 +190,6 @@ document.getElementById('btn-register').addEventListener('click', async () => {
         return;
     }
 
-    if (emailInput.toLowerCase() === 'au.costa' || emailInput.toLowerCase() === 'admin_au_costa') {
-        errorMsg.style.color = "#e53e3e";
-        errorMsg.innerText = "Nome de usuário reservado pelo sistema.";
-        return;
-    }
-
     try {
         errorMsg.style.color = "#777";
         errorMsg.innerText = "Criando conta no banco de dados, aguarde...";
@@ -254,7 +253,7 @@ async function loadDashboard() {
 }
 
 // ==========================================
-// MÓDULO: ESTUDO E ANOTAÇÕES
+// MÓDULO: ESTUDO, ANOTAÇÕES E MENU DE AÇÕES
 // ==========================================
 function startStudySession() {
     requestWakeLock(); 
@@ -296,6 +295,7 @@ document.getElementById('header-book-btn').addEventListener('click', () => {
     controls.style.display = (controls.style.display === 'none' || controls.style.display === '') ? 'flex' : 'none';
 });
 
+// A MÁGICA ACONTECE AQUI NO CARREGAMENTO
 document.getElementById('btn-load-text').addEventListener('click', async () => {
     const book = document.getElementById('bible-book').value;
     const chapter = document.getElementById('bible-chapter').value;
@@ -306,13 +306,35 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
 
     try {
         const dbRef = ref(db);
+        
+        // 1. Busca os textos da Bíblia
         const snapshot = await get(child(dbRef, `Biblia_Estudo/Textos/${book}/${chapter}`));
         
         if (snapshot.exists()) {
             const verses = snapshot.val();
+            
+            // 2. Busca as marcações de texto (Highlights) salvas pelo usuário
+            const highlightsSnapshot = await get(child(dbRef, `Biblia_Estudo/Users/${currentUser.uid}/Highlights/${book}/${chapter}`));
+            const highlights = highlightsSnapshot.exists() ? highlightsSnapshot.val() : {};
+
+            // 3. Verifica no Cache IA quais versículos deste capítulo já possuem estudo gerado
+            // A query isola a pesquisa apenas para o capítulo atual, poupando a memória do app!
+            const baseKey = sanitizeKey(`${book.replace(/\s+/g, '_')}_${chapter}_`);
+            const cacheQuery = query(ref(db, 'Biblia_Estudo/AI_Cache_Exaustivo'), orderByKey(), startAt(baseKey), endAt(baseKey + "\uf8ff"));
+            const cacheSnapshot = await get(cacheQuery);
+            const cachedVerses = cacheSnapshot.exists() ? Object.keys(cacheSnapshot.val()) : [];
+
             let htmlContent = '';
 
             for (const [verseNum, verseData] of Object.entries(verses)) {
+                
+                // Aplica a cor de fundo salva, se houver
+                let bgColor = highlights[verseNum] ? `background-color: ${highlights[verseNum]};` : '';
+                
+                // Insere o ícone apenas se a chave exata existir no cache retornado
+                const currentVerseKey = sanitizeKey(`${book.replace(/\s+/g, '_')}_${chapter}_${verseNum}`);
+                let cacheIcon = cachedVerses.includes(currentVerseKey) ? `<span class="study-icon" title="Estudo Profundo Disponível" onclick="event.stopPropagation(); analyzeVerse('${book}', '${chapter}', '${verseNum}', this.parentElement)"></span>` : '';
+
                 if (version === 'original') {
                     let strongLinks = '';
                     if(verseData.strongs) {
@@ -323,14 +345,14 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
                     let textoOriginal = verseData.original ? verseData.original : (verseData.ntlh || verseData.acf || '');
                     
                     htmlContent += `
-                        <div class="verse-text" onclick="analyzeVerse('${book}', '${chapter}', '${verseNum}', this)">
-                            <strong>${verseNum}</strong> <span class="v-text-content">${textoOriginal}</span> ${strongLinks}
+                        <div class="verse-text" style="${bgColor}" onclick="openVerseActionMenu('${book}', '${chapter}', '${verseNum}', this)">
+                            <strong>${verseNum}</strong> <span class="v-text-content">${textoOriginal}</span> ${strongLinks} ${cacheIcon}
                         </div>`;
                 } else {
                     let textoVersao = verseData[version] ? verseData[version] : `<span style="color:#e53e3e">Indisponível nesta tradução.</span>`;
                     htmlContent += `
-                        <div class="verse-text" onclick="analyzeVerse('${book}', '${chapter}', '${verseNum}', this)">
-                            <strong>${verseNum}</strong> <span class="v-text-content">${textoVersao}</span>
+                        <div class="verse-text" style="${bgColor}" onclick="openVerseActionMenu('${book}', '${chapter}', '${verseNum}', this)">
+                            <strong>${verseNum}</strong> <span class="v-text-content">${textoVersao}</span> ${cacheIcon}
                         </div>`;
                 }
             }
@@ -348,6 +370,111 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
     }
 });
 
+// ==========================================
+// FUNÇÕES DO MENU DE AÇÕES FLUTUANTE
+// ==========================================
+window.openVerseActionMenu = (book, chapter, verseNum, element) => {
+    currentSelectedVerse = { book, chapter, verseNum, element };
+    const verseText = element.querySelector('.v-text-content').innerText;
+    currentSelectedVerse.text = verseText;
+    
+    document.getElementById('action-verse-ref').innerText = `${book} ${chapter}:${verseNum}`;
+    document.getElementById('color-palette-container').style.display = 'none';
+    document.getElementById('verse-action-menu').style.display = 'flex';
+};
+
+window.closeVerseActionMenu = () => {
+    document.getElementById('verse-action-menu').style.display = 'none';
+};
+
+// Fechar menu se clicar fora dele (fundo escuro)
+document.getElementById('verse-action-menu').addEventListener('click', (e) => {
+    if (e.target.id === 'verse-action-menu') closeVerseActionMenu();
+});
+
+// Ação: Copiar
+document.getElementById('btn-action-copy').addEventListener('click', () => {
+    if(!currentSelectedVerse) return;
+    const { book, chapter, verseNum, text } = currentSelectedVerse;
+    const fullText = `"${text}"\n(${book} ${chapter}:${verseNum})`;
+    navigator.clipboard.writeText(fullText).then(() => {
+        alert("Versículo copiado!");
+        closeVerseActionMenu();
+    });
+});
+
+// Ação: Compartilhar
+document.getElementById('btn-action-share').addEventListener('click', async () => {
+    if(!currentSelectedVerse) return;
+    const { book, chapter, verseNum, text } = currentSelectedVerse;
+    const fullText = `"${text}"\n(${book} ${chapter}:${verseNum})`;
+    
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: `${book} ${chapter}:${verseNum}`,
+                text: fullText,
+            });
+        } catch (e) { console.error("Erro ao compartilhar", e); }
+    } else {
+        navigator.clipboard.writeText(fullText);
+        alert("Versículo copiado para compartilhamento!");
+    }
+    closeVerseActionMenu();
+});
+
+// Ação: Anotação
+document.getElementById('btn-action-note').addEventListener('click', () => {
+    if(!currentSelectedVerse) return;
+    const { book, chapter, verseNum, text } = currentSelectedVerse;
+    document.getElementById('notes-area-wrapper').style.display = 'block';
+    
+    const notesBox = document.getElementById('study-notes');
+    if(notesBox.value !== "") notesBox.value += `\n\n`;
+    notesBox.value += `[${book} ${chapter}:${verseNum}] "${text}"\n- `;
+    
+    notesBox.focus();
+    // Rola a tela até o final para o usuário ver a caixa de texto
+    document.getElementById('study-screen').scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    
+    closeVerseActionMenu();
+});
+
+// Ação: Estudo IA
+document.getElementById('btn-action-study').addEventListener('click', () => {
+    if(!currentSelectedVerse) return;
+    const { book, chapter, verseNum, element } = currentSelectedVerse;
+    analyzeVerse(book, chapter, verseNum, element);
+    closeVerseActionMenu();
+});
+
+// Ação: Mostrar Paleta de Cores (Marcar)
+document.getElementById('btn-action-highlight').addEventListener('click', () => {
+    document.getElementById('color-palette-container').style.display = 'block';
+});
+
+// Salvar/Remover Marcação de Texto
+window.applyHighlight = async (color) => {
+    if(!currentSelectedVerse || !currentUser) return;
+    const { book, chapter, verseNum, element } = currentSelectedVerse;
+    
+    // Atualiza imediatamente na tela
+    element.style.backgroundColor = color; 
+    
+    // Salva ou remove no Firebase
+    const highlightRef = ref(db, `Biblia_Estudo/Users/${currentUser.uid}/Highlights/${book}/${chapter}/${verseNum}`);
+    if (color === '') {
+        await remove(highlightRef);
+    } else {
+        await set(highlightRef, color);
+    }
+    
+    closeVerseActionMenu();
+};
+
+// ==========================================
+// PAGINAÇÃO E SALVAMENTO DE ANOTAÇÕES
+// ==========================================
 document.getElementById('btn-next-chapter').addEventListener('click', () => {
     const bookSelect = document.getElementById('bible-book');
     const chapterSelect = document.getElementById('bible-chapter');
@@ -443,6 +570,36 @@ async function loadMyNotes() {
     }
 }
 
+// NOVO: FUNÇÃO PARA CARREGAR CURIOSIDADES
+async function loadCuriosities() {
+    const container = document.getElementById('curiosities-container');
+    container.innerHTML = '<p class="placeholder-text">Buscando curiosidades...</p>';
+
+    try {
+        const snapshot = await get(child(ref(db), `Biblia_Estudo/Curiosidades`));
+        if (snapshot.exists()) {
+            const curiosities = snapshot.val();
+            let html = '';
+            
+            for (const key in curiosities) {
+                const cur = curiosities[key];
+                // Renderiza o título (se houver) e o texto da curiosidade
+                html += `
+                <div class="card" style="text-align: left; margin-bottom: 15px;">
+                    ${cur.titulo ? `<h3 style="color: #b07d3b; font-size: 1.15em; margin-bottom: 10px;">${cur.titulo}</h3>` : ''}
+                    <p style="white-space: pre-wrap; font-size: 1.05em; color: #333;">${cur.texto}</p>
+                </div>`;
+            }
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<p class="placeholder-text">Nenhuma curiosidade encontrada. Fale com o Administrador.</p>';
+        }
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = '<p class="placeholder-text error-msg">Erro ao carregar curiosidades.</p>';
+    }
+}
+
 // ==========================================
 // MÓDULO: SUPER PROFESSOR EXAUSTIVO (GROQ API + CACHE INTELIGENTE)
 // ==========================================
@@ -502,6 +659,9 @@ window.analyzeVerse = async (book, chapter, verseNum, element) => {
         copyBtn.style.display = 'block';
 
         await set(ref(db, `Biblia_Estudo/AI_Cache_Exaustivo/${cacheKey}`), { html: aiHTML });
+        
+        element.innerHTML += ` <span class="study-icon" title="Estudo Profundo Disponível" onclick="event.stopPropagation(); analyzeVerse('${book}', '${chapter}', '${verseNum}', this.parentElement)"></span>`;
+        
     } catch (error) {
         content.innerHTML = '<p class="error-msg">Erro ao conectar ao servidor.</p>';
     }
@@ -828,7 +988,6 @@ document.getElementById('btn-import-ai-cache').addEventListener('click', async (
     }
 });
 
-// Importar Planos de Estudo JSON
 document.getElementById('btn-import-plans').addEventListener('click', async () => {
     const fileInput = document.getElementById('plans-json-input');
     const statusText = document.getElementById('import-plans-status');
@@ -857,6 +1016,93 @@ document.getElementById('btn-import-plans').addEventListener('click', async () =
                 
                 statusText.style.color = "#48bb78";
                 statusText.innerText = `✅ Planos de estudo importados com sucesso no banco!`;
+            } catch (error) {
+                console.error("Erro:", error);
+                statusText.style.color = "#e53e3e";
+                statusText.innerText = `❌ Erro no processamento. Verifique o JSON.`;
+            }
+        };
+        reader.readAsText(file);
+    }
+});
+
+// NOVO: LOGICA DE IMPORTAÇÃO DAS CURIOSIDADES (ADAPTADA PARA O SUPER JSON)
+document.getElementById('btn-import-curiosities').addEventListener('click', async () => {
+    const fileInput = document.getElementById('curiosities-json-input');
+    const statusText = document.getElementById('import-curiosities-status');
+    
+    if (fileInput.files.length === 0) {
+        statusText.innerText = "❌ Selecione um arquivo .json com as curiosidades.";
+        statusText.style.color = "#e53e3e"; 
+        return;
+    }
+
+    statusText.style.color = "#777";
+    statusText.innerText = "Processando super banco de curiosidades... Aguarde.";
+
+    for (let file of fileInput.files) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const jsonData = JSON.parse(e.target.result);
+                let updates = {};
+                let count = 0;
+                
+                // 1. Se for o JSON simples (Array), faz o padrão antigo
+                if (Array.isArray(jsonData)) {
+                    jsonData.forEach((cur, index) => {
+                        updates[`Biblia_Estudo/Curiosidades/Curiosidade_${Date.now()}_${index}`] = cur;
+                    });
+                } 
+                // 2. SE FOR O SEU NOVO SUPER JSON ESTRUTURADO:
+                else {
+                    
+                    // A. Extrai Fatos Surpreendentes
+                    if (jsonData.curiosidades_e_recordes && jsonData.curiosidades_e_recordes.fatos_surpreendentes) {
+                        jsonData.curiosidades_e_recordes.fatos_surpreendentes.forEach(fato => {
+                            updates[`Biblia_Estudo/Curiosidades/Cur_${Date.now()}_${count++}`] = {
+                                titulo: "💡 Você Sabia?",
+                                texto: fato
+                            };
+                        });
+                    }
+
+                    // B. Extrai Recordes e Marcos
+                    if (jsonData.curiosidades_e_recordes && jsonData.curiosidades_e_recordes.recordes_e_marcos) {
+                        for (const [chave, valor] of Object.entries(jsonData.curiosidades_e_recordes.recordes_e_marcos)) {
+                            let tituloFormatado = chave.replace(/_/g, ' ').toUpperCase();
+                            updates[`Biblia_Estudo/Curiosidades/Cur_${Date.now()}_${count++}`] = {
+                                titulo: `🏆 ${tituloFormatado}`,
+                                texto: valor
+                            };
+                        }
+                    }
+
+                    // C. Extrai Repetições de Palavras
+                    if (jsonData.curiosidades_e_recordes && jsonData.curiosidades_e_recordes.repeticoes_e_frequencia_de_palavras) {
+                        jsonData.curiosidades_e_recordes.repeticoes_e_frequencia_de_palavras.forEach(item => {
+                            updates[`Biblia_Estudo/Curiosidades/Cur_${Date.now()}_${count++}`] = {
+                                titulo: `🔍 Palavra: "${item.palavra}"`,
+                                texto: `Aparece aproximadamente ${item.frequencia_aproximada}.\n\nDestaque: ${item.destaque}`
+                            };
+                        });
+                    }
+
+                    // D. Extrai Curiosidades Livro a Livro
+                    if (jsonData.todos_os_livros) {
+                        jsonData.todos_os_livros.forEach(livro => {
+                            updates[`Biblia_Estudo/Curiosidades/Cur_${Date.now()}_${count++}`] = {
+                                titulo: `📖 Curiosidade sobre ${livro.nome}`,
+                                texto: `${livro.curiosidade}\n\nTema: ${livro.tema_principal}\nAutor: ${livro.autor_provavel}\n\n✨ Frase Marcante: "${livro.frase_impactante}"`
+                            };
+                        });
+                    }
+                }
+
+                await update(ref(db), updates);
+                
+                statusText.style.color = "#48bb78";
+                statusText.innerText = `✅ Sucesso! Centenas de curiosidades extraídas e salvas!`;
             } catch (error) {
                 console.error("Erro:", error);
                 statusText.style.color = "#e53e3e";

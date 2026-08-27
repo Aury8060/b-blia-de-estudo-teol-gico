@@ -25,7 +25,6 @@
 
     <!-- TELA HOME / PERFIL -->
     <div id="dashboard-screen" class="screen">
-        <!-- NOVO: Header com Botão Sair Discreto -->
         <header style="border-bottom: none; padding-bottom: 0;">
             <div class="user-info">
                 <img id="profile-pic" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Perfil">
@@ -70,7 +69,6 @@
                 <select id="bible-book"></select>
                 <select id="bible-chapter"></select>
                 <select id="bible-version">
-                    <option value="original">Língua Original + Strong</option>
                     <option value="acf">ACF (Almeida Corrigida Fiel)</option>
                     <option value="ara">ARA (Almeida Revista e Atualizada)</option>
                     <option value="arco">ARCO (Almeida Revista e Corrigida)</option>
@@ -94,12 +92,10 @@
             </div>
             
             <div class="levels">
-                <!-- Caixa onde o texto será inserido e rolará -->
                 <div class="bible-reader" id="bible-reader">
                     <p class="placeholder-text">Clique no botão do topo para selecionar um livro e iniciar o estudo.</p>
                 </div>
 
-                <!-- Botões Flutuantes Redondos -->
                 <button id="btn-prev-chapter" class="nav-circle">‹</button>
                 <button id="btn-next-chapter" class="nav-circle">›</button>
             </div>
@@ -138,9 +134,7 @@
                 <input type="number" id="study-days-input" placeholder="Ex: 3" min="1" max="7" style="margin-bottom: 10px;">
                 <button id="btn-generate-plan">Gerar Plano de Estudo</button>
             </div>
-            <div id="ai-plan-content" class="card" style="display:none; text-align: left; margin-top:15px; font-size: 1.05em; line-height: 1.6;">
-                <!-- O plano gerado aparecerá aqui -->
-            </div>
+            <div id="ai-plan-content" class="card" style="display:none; text-align: left; margin-top:15px; font-size: 1.05em; line-height: 1.6;"></div>
         </div>
     </div>
 
@@ -152,7 +146,6 @@
             <div style="width: 30px;"></div>
         </header>
         
-        <!-- Configuração do Quiz -->
         <div id="quiz-setup" class="card" style="text-align: left;">
             <h3 style="color: #b07d3b;">Configuração da Partida</h3>
             <p class="dict-sub">Escolha o tempo máximo para responder cada pergunta.</p>
@@ -161,7 +154,6 @@
             <button id="btn-start-quiz" style="margin-top: 20px;">Iniciar Partida Aleatória</button>
         </div>
 
-        <!-- Área Ativa do Quiz -->
         <div id="quiz-active" style="display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <span class="badge" style="font-size: 1em; background: #eee; color: #333;">Acertos: <span id="quiz-hits" style="color:#48bb78;">0</span> | Erros: <span id="quiz-misses" style="color:#e53e3e;">0</span></span>
@@ -170,12 +162,22 @@
             
             <div class="card" style="text-align: left;">
                 <h3 id="question-text" style="font-size: 1.3em; margin-bottom: 20px; color:#333;">Carregando pergunta...</h3>
-                <div id="options-container" style="display: flex; flex-direction: column; gap: 10px;">
-                    <!-- Botões de opção injetados via JS -->
-                </div>
+                <div id="options-container" style="display: flex; flex-direction: column; gap: 10px;"></div>
             </div>
             
             <button id="btn-stop-quiz" style="background: #e53e3e; margin-top: 20px;">⏹ Parar Partida e Salvar Pontos</button>
+        </div>
+    </div>
+
+    <!-- NOVO: TELA DE CURIOSIDADES -->
+    <div id="curiosities-screen" class="screen">
+        <header>
+            <button onclick="openScreen('dashboard-screen')">⬅ Voltar</button>
+            <h2 style="color:#b07d3b; font-size: 1.3em;">Curiosidades</h2>
+            <div style="width: 30px;"></div>
+        </header>
+        <div id="curiosities-container">
+            <p class="placeholder-text">Carregando curiosidades...</p>
         </div>
     </div>
 
@@ -187,20 +189,15 @@
             <div style="width: 30px;"></div>
         </header>
         <div>
-            
-            <!-- Adicionar QUIZ via TXT -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
                 <h3 style="color: #b07d3b; margin-bottom: 10px;">📥 Importar Banco de Quiz (TXT)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Selecione os arquivos .txt contendo as perguntas.</p>
                 <input type="file" id="quiz-txt-input" accept=".txt" multiple>
                 <button id="btn-import-quiz" style="background: #48bb78;">Processar e Enviar Quiz</button>
-                <p id="quiz-import-status" class="placeholder-text" style="margin-top: 10px;"></p>
+                <p id="quiz-import-status" class="placeholder-text"></p>
             </div>
 
-            <!-- Importar BÍBLIA JSON -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #b07d3b; margin-bottom: 10px;">📥 Importar Banco de Dados Bíblia (JSON)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">1. Selecione a versão. 2. Selecione o arquivo JSON estruturado.</p>
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">📥 Importar Bíblia (JSON)</h3>
                 <select id="admin-import-version" style="margin-bottom: 10px;">
                     <option value="acf">ACF (Almeida Corrigida Fiel)</option>
                     <option value="ara">ARA (Almeida Revista e Atualizada)</option>
@@ -222,33 +219,37 @@
                     <option value="vfl">VFL (Versão Fácil de Ler)</option>
                 </select>
                 <input type="file" id="json-file-input" accept=".json" multiple>
-                <button id="btn-import-json" style="background: #48bb78;">Processar e Salvar no Firebase</button>
-                <p id="import-status" class="placeholder-text" style="margin-top: 10px;"></p>
+                <button id="btn-import-json" style="background: #48bb78;">Processar e Salvar</button>
+                <p id="import-status" class="placeholder-text"></p>
             </div>
 
-            <!-- Importar ESTUDO EXAUSTIVO (CACHE IA) -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #b07d3b; margin-bottom: 10px;">🧠 Importar Estudo Exaustivo (Cache IA)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do seu JSON contendo os estudos (Gênesis_1_1).</p>
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">🧠 Importar Estudo Exaustivo</h3>
                 <input type="file" id="ai-cache-json-input" accept=".json" multiple>
-                <button id="btn-import-ai-cache">Processar e Injetar no Cache</button>
-                <p id="import-ai-cache-status" class="placeholder-text" style="margin-top: 10px;"></p>
+                <button id="btn-import-ai-cache">Injetar no Cache</button>
+                <p id="import-ai-cache-status" class="placeholder-text"></p>
             </div>
 
-            <!-- Importar PLANOS DE ESTUDO -->
             <div class="card" style="text-align: left; margin-bottom: 20px;">
-                <h3 style="color: #b07d3b; margin-bottom: 10px;">📅 Importar Planos de Estudo (JSON)</h3>
-                <p class="dict-sub" style="margin-bottom: 15px;">Faça o upload do JSON contendo os planos.</p>
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">📅 Importar Planos</h3>
                 <input type="file" id="plans-json-input" accept=".json" multiple>
-                <button id="btn-import-plans">Processar e Salvar Planos</button>
-                <p id="import-plans-status" class="placeholder-text" style="margin-top: 10px;"></p>
+                <button id="btn-import-plans">Processar Planos</button>
+                <p id="import-plans-status" class="placeholder-text"></p>
+            </div>
+
+            <!-- NOVO: IMPORTAR CURIOSIDADES NO ADMIN -->
+            <div class="card" style="text-align: left; margin-bottom: 20px;">
+                <h3 style="color: #b07d3b; margin-bottom: 10px;">💡 Importar Curiosidades (JSON)</h3>
+                <input type="file" id="curiosities-json-input" accept=".json" multiple>
+                <button id="btn-import-curiosities">Processar Curiosidades</button>
+                <p id="import-curiosities-status" class="placeholder-text"></p>
             </div>
 
             <div class="card" style="text-align: left;">
-                <h3 style="color: #e53e3e; margin-bottom: 10px;">🗑️ Gerenciar Dados (Apagar Livro)</h3>
+                <h3 style="color: #e53e3e; margin-bottom: 10px;">🗑️ Apagar Livro</h3>
                 <select id="admin-delete-book" style="margin-bottom: 10px;"></select>
-                <button id="btn-delete-book" style="background: #e53e3e;">Apagar Livro Selecionado</button>
-                <p id="delete-status" class="placeholder-text" style="margin-top: 10px;"></p>
+                <button id="btn-delete-book" style="background: #e53e3e;">Apagar</button>
+                <p id="delete-status" class="placeholder-text"></p>
             </div>
         </div>
     </div>
@@ -271,11 +272,45 @@
             <span class="icon">📅</span>
             Agenda de Leitura
         </button>
+        <!-- NOVO: BOTÃO CURIOSIDADES NO MENU -->
+        <button class="nav-item" onclick="openScreen('curiosities-screen')">
+            <span class="icon">💡</span>
+            Curiosidades
+        </button>
         <button class="nav-item" id="nav-admin" style="display: none;" onclick="openScreen('admin-screen')">
             <span class="icon">⚙️</span>
             Painel Admin
         </button>
     </nav>
+
+    <!-- NOVO: MENU DE AÇÕES DO VERSÍCULO (Bottom Sheet) -->
+    <div id="verse-action-menu" class="action-menu-overlay">
+        <div class="action-menu-content">
+            <div class="action-menu-header">
+                <span id="action-verse-ref" style="font-size: 1.1em; font-weight: bold; color: #b07d3b;">Livro 1:1</span>
+                <button onclick="closeVerseActionMenu()" style="background: none; color: #888; border: none; font-size: 1.8em; padding: 0; line-height: 1; margin: 0; width: auto;">&times;</button>
+            </div>
+            <div class="action-buttons">
+                <button id="btn-action-copy">📋 Copiar</button>
+                <button id="btn-action-highlight">🖍️ Marcar</button>
+                <button id="btn-action-note">📝 Anotação</button>
+                <button id="btn-action-share">🔗 Compartilhar</button>
+                <button id="btn-action-study" style="background: #b07d3b; color: white;">🎓 Estudo </button>
+            </div>
+            <div id="color-palette-container" style="display: none; margin-top: 20px; text-align: center;">
+                <p style="font-size: 0.9em; color: #777; margin-bottom: 10px;">Selecione uma cor para destacar:</p>
+                <div class="color-palette">
+                    <!-- Remover marcação -->
+                    <div class="color-circle" style="background: #f8f9fa; border: 2px solid #ddd; display: flex; align-items: center; justify-content: center; color: #888; font-weight: bold;" onclick="applyHighlight('')">X</div>
+                    <div class="color-circle" style="background: #fdfd96;" onclick="applyHighlight('#fdfd96')"></div>
+                    <div class="color-circle" style="background: #aae0fa;" onclick="applyHighlight('#aae0fa')"></div>
+                    <div class="color-circle" style="background: #f8c8dc;" onclick="applyHighlight('#f8c8dc')"></div>
+                    <div class="color-circle" style="background: #bbf0b1;" onclick="applyHighlight('#bbf0b1')"></div>
+                    <div class="color-circle" style="background: #fcd0a1;" onclick="applyHighlight('#fcd0a1')"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL DO DICIONÁRIO STRONG -->
     <div id="dict-modal" class="modal">
