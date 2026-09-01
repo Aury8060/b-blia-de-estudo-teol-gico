@@ -99,7 +99,19 @@ function initBibleNavigation() {
             chapterSelect.appendChild(option);
         }
     });
-    bookSelect.dispatchEvent(new Event('change'));
+
+    const lastBook = localStorage.getItem('lastReadBook');
+    const lastChapter = localStorage.getItem('lastReadChapter');
+    const lastVersion = localStorage.getItem('lastReadVersion');
+
+    if (lastBook) {
+        bookSelect.value = lastBook;
+        bookSelect.dispatchEvent(new Event('change'));
+        if (lastChapter) chapterSelect.value = lastChapter;
+        if (lastVersion) document.getElementById('bible-version').value = lastVersion;
+    } else {
+        bookSelect.dispatchEvent(new Event('change'));
+    }
 }
 
 window.openScreen = (screenId) => {
@@ -111,7 +123,12 @@ window.openScreen = (screenId) => {
     let targetNavBtn = Array.from(document.querySelectorAll('.nav-item')).find(btn => btn.getAttribute('onclick').includes(screenId));
     if(targetNavBtn) targetNavBtn.classList.add('active');
 
-    if (screenId === 'study-screen') startStudySession();
+    if (screenId === 'study-screen') {
+        startStudySession();
+        if (localStorage.getItem('lastReadBook')) {
+            document.getElementById('btn-load-text').click();
+        }
+    }
     if (screenId === 'notes-screen') loadMyNotes();
     // NOVO: Engatilha o carregamento de curiosidades ao abrir a tela
     if (screenId === 'curiosities-screen') loadCuriosities(); 
@@ -256,6 +273,7 @@ async function loadDashboard() {
 // MÓDULO: ESTUDO, ANOTAÇÕES E MENU DE AÇÕES
 // ==========================================
 function startStudySession() {
+    clearInterval(studyTimer);
     requestWakeLock(); 
     secondsStudied = 0;
     document.getElementById('session-timer').innerText = "00:00";
@@ -301,6 +319,10 @@ document.getElementById('btn-load-text').addEventListener('click', async () => {
     const chapter = document.getElementById('bible-chapter').value;
     const version = document.getElementById('bible-version').value;
     const readerDiv = document.getElementById('bible-reader');
+    
+    localStorage.setItem('lastReadBook', book);
+    localStorage.setItem('lastReadChapter', chapter);
+    localStorage.setItem('lastReadVersion', version);
     
     readerDiv.innerHTML = '<p class="placeholder-text">Consultando as Escrituras no banco de dados...</p>';
 
@@ -484,6 +506,7 @@ document.getElementById('btn-next-chapter').addEventListener('click', () => {
         document.getElementById('btn-load-text').click();
     } else if (bookSelect.selectedIndex < bookSelect.options.length - 1) {
         bookSelect.selectedIndex++;
+        bookSelect.dispatchEvent(new Event('change'));
         setTimeout(() => {
             chapterSelect.selectedIndex = 0;
             document.getElementById('btn-load-text').click();
@@ -500,6 +523,7 @@ document.getElementById('btn-prev-chapter').addEventListener('click', () => {
         document.getElementById('btn-load-text').click();
     } else if (bookSelect.selectedIndex > 0) {
         bookSelect.selectedIndex--;
+        bookSelect.dispatchEvent(new Event('change'));
         setTimeout(() => {
             chapterSelect.selectedIndex = chapterSelect.options.length - 1;
             document.getElementById('btn-load-text').click();
